@@ -1,0 +1,31 @@
+# IntelliJ IDEA
+.idea/
+.vscode/
+
+# Gradle files
+.gradle/
+/build/
+
+# Compiled class files
+out/
+*.class
+
+# Log files
+*.log
+
+# Dependency directories
+**/lib/
+**/.idea_modules/
+
+# Miscellaneous
+*.iml
+*.ipr
+*.iws
+.DS_Store
+This .gitignore file should be placed at the root directory of your project. It excludes files and directories commonly found in Java IntelliJ Gradle projects that should not be tracked by Git.
+
+
+
+
+
+
