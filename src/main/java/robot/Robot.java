@@ -1,9 +1,10 @@
 package robot;
 
+import adminserver.REST.RESTutils;
+import adminserver.REST.beans.InsertRobotBean;
 import robot.communication.RobotCommunication;
 import utils.City;
-
-//! ROBOT CREATION IN WHICH DISTRICT? ADMIN?
+import utils.Position;
 
 public class Robot {
   private static Robot instance = null;
@@ -18,18 +19,19 @@ public class Robot {
   private Thread communicationThread;
   private Thread networkThread;
 
-  private City city = null;
+  private int cityId = -1;
+  private int districtId = -1;
   private int id = -1;
   private String ipAddress = "";
   private int portNumber = -1;
+  private Position position = null;
 
   private boolean init = false;
 
   private Robot() {
-    this.input = new RobotInput(this);
+    this.input = new RobotInput();
     this.sensor = new RobotSensor();
-    this.communication = new RobotCommunication(this);
-    this.network = new RobotNetwork();
+    this.communication = new RobotCommunication();
   }
   public static Robot getInstance() {
     if (instance == null) {
@@ -37,6 +39,11 @@ public class Robot {
     }
     return instance;
   }
+
+  ////////////////////////////////////////////////////////////
+  // INITIALIZATION
+  ////////////////////////////////////////////////////////////
+
   public void start() {
     Thread inputThread = new Thread(this.input);
     // Thread sensorThread = new Thread(this.sensor);
@@ -52,17 +59,128 @@ public class Robot {
     // sensorThread.start();
     // communicationThread.start();
     // networkThread.start();
+  
+    // Shutdown hook
+    Runtime.getRuntime().addShutdownHook(new Thread() {
+        public void run() {
+            if (Robot.instance == null
+              || Robot.getInstance().getId() == -1
+              || !Robot.getInstance().init) { return; }
+            System.out.println("Shutting down robot "+Robot.getInstance().getId()+"...");
+            disconnect();
+        }
+    });
   }
+  public void init(int id, String ipAddress, int portNumber) {
 
-  public City getCity() {
-    return this.city;
-  }
-  public void setCity(City city) {
-    if (this.city != null) {
-      System.out.println("Robot already has a city.");
+    if (init) { return; }
+
+    System.out.println("Initializating robot with:"
+    +"\n\tid:          " + id
+    +"\n\tip address:  " + ipAddress
+    +"\n\tport number: " + portNumber);
+
+    this.setId(id);
+    this.setIpAddress(ipAddress);
+    this.setPortNumber(portNumber);
+
+    // join network and send messages to all robots
+    try {
+      InsertRobotBean insertRobotBean = this.communication.joinNetwork();
+      Position pos = new Position(insertRobotBean.getX(), insertRobotBean.getY());
+      this.setDistrictId(City.getCityById(this.cityId)
+          .getDistrictByPosition(pos).getId());
+      this.network = new RobotNetwork(pos, insertRobotBean.getRobots());
+    } catch (Exception e) {
+      System.out.println("Robot "+this.id+" failed to join the network.");
+      this.destroy();
       return;
     }
-    this.city = city;
+
+    this.init = true;
+  }
+
+  ////////////////////////////////////////////////////////////
+  // DISCONNECT
+  ////////////////////////////////////////////////////////////
+
+  /**
+   * disconnects the robot from the network
+   */
+  public void disconnect() {
+
+    if (Robot.instance == null
+    || this.id == -1
+    || !this.init) { return; }
+
+    System.out.println("Robot "+this.id+" is disconnecting from the network.");
+
+    try {
+      this.communication.disconnect();
+    } catch (Exception e) {
+      System.out.println("Robot "+this.id+" failed to disconnect from the network.");
+    }
+
+    this.destroy();
+  }
+
+  /**
+   * destroys the robot instance and process
+   */
+  private void destroy() {
+
+    if (Robot.instance == null
+    || this.id == -1) { return; }
+
+    System.out.println("Destroying robot "+this.id+".");
+
+    this.inputThread.interrupt();
+    // this.sensorThread.interrupt();
+    // this.communicationThread.interrupt();
+    // this.networkThread.interrupt();
+    this.inputThread = null;
+    // this.sensorThread = null;
+    // this.communicationThread = null;
+    // this.networkThread = null;
+
+    this.cityId = -1;
+    this.id = -1;
+    this.ipAddress = "";
+    this.portNumber = -1;
+    this.init = false;
+
+    // remove instance
+    instance = null;
+
+    System.out.println("Robot destroyed.");
+    System.out.println("Exiting...");
+
+    Runtime.getRuntime().exit(0);
+  }
+
+  ////////////////////////////////////////////////////////////
+  // GETTERS AND SETTERS
+  ////////////////////////////////////////////////////////////
+
+  public int getCityId() {
+    return this.cityId;
+  }
+  public void setCityId(int cityId) {
+    if (this.cityId != -1) {
+      System.out.println("Robot already has a cityId.");
+      return;
+    }
+    this.cityId = cityId;
+  }
+  public int getDistrictId() {
+    return this.districtId;
+  }
+  public void setDistrictId(int districtId) {
+    if (this.districtId != -1) {
+      System.out.println("Robot already has a districtId.");
+      return;
+    }
+    this.districtId = districtId;
   }
   public int getId() {
     return this.id;
@@ -93,52 +211,5 @@ public class Robot {
       return;
     }
     this.portNumber = portNumber;
-  }
-  public void init(int id, String ipAddress, int portNumber) {
-
-    if (init) { return; }
-
-    System.out.println("Initializating robot with:"
-    +"\n\tid:          " + id
-    +"\n\tip address:  " + ipAddress
-    +"\n\tport number: " + portNumber);
-
-    this.setId(id);
-    this.setIpAddress(ipAddress);
-    this.setPortNumber(portNumber);
-
-    boolean success = this.communication.joinNetwork();
-
-    if (!success) {
-      destroy();
-      return;
-    }
-    this.init = true;
-  }
-
-  public void disconnect() {
-
-    // send message to the admin
-
-    this.destroy();
-  }
-
-  private void destroy() {
-    this.inputThread.interrupt();
-    // this.sensorThread.interrupt();
-    // this.communicationThread.interrupt();
-    // this.networkThread.interrupt();
-    this.inputThread = null;
-    // this.sensorThread = null;
-    // this.communicationThread = null;
-    // this.networkThread = null;
-    this.city = null;
-    this.id = -1;
-    this.ipAddress = "";
-    this.portNumber = -1;
-    this.init = false;
-
-    // remove instance
-    instance = null;
   }
 }

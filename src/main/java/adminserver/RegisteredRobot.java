@@ -1,6 +1,6 @@
 package adminserver;
 
-import adminserver.REST.beans.Robot;
+import adminserver.REST.beans.RobotBean;
 import utils.District;
 import utils.Position;
 
@@ -37,8 +37,8 @@ public class RegisteredRobot {
   public District getDistrict() {
     return this.district;
   }
-  public Robot createRobot() {
-    return new Robot(this.id, this.ipAddress, this.port);
+  public RobotBean createRobot() {
+    return new RobotBean(this.id, this.ipAddress, this.port);
   }
   public String getRepresentation() {
     return "Robot: " + this.id

@@ -45,6 +45,14 @@ public class City {
     }
     return null;
   }
+  public District getDistrictByPosition(Position position) {
+    for (District district : this.districts) {
+      if (district.hasPosition(position)) {
+        return district;
+      }
+    }
+    return null;
+  }
   public Position getOrigin() {
     int originX = districts.get(0).getOrigin().getX();
     int originY = districts.get(0).getOrigin().getY();

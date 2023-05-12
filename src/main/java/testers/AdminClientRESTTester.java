@@ -7,14 +7,12 @@ import java.util.concurrent.TimeUnit;
 import adminserver.AdministratorServer;
 import adminserver.REST.RESTutils;
 import utils.City;
-import adminserver.REST.beans.Robot;
+import adminserver.REST.beans.RobotBean;
 
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 
 import com.sun.jersey.api.representation.Form;
-
-import adminclient.AdminClient;
 
 public class AdminClientRESTTester {
 
@@ -52,12 +50,12 @@ public class AdminClientRESTTester {
     public void squentialTest() throws InterruptedException {
 
         // Create multiple threads that access the shared resource
-        Thread thread1 = new Thread(() -> AdministratorServer.getInstance(City.greenfieldCity.getId()).addRobot(new Robot(1, "", 0)));
-        Thread thread2 = new Thread(() -> AdministratorServer.getInstance(City.greenfieldCity.getId()).addRobot(new Robot(1, "", 0)));
-        Thread thread3 = new Thread(() -> AdministratorServer.getInstance(City.greenfieldCity.getId()).addRobot(new Robot(1, "", 0)));
-        Thread thread4 = new Thread(() -> AdministratorServer.getInstance(City.greenfieldCity.getId()).addRobot(new Robot(1, "", 0)));
-        Thread thread5 = new Thread(() -> AdministratorServer.getInstance(City.greenfieldCity.getId()).addRobot(new Robot(1, "", 0)));
-        Thread thread6 = new Thread(() -> AdministratorServer.getInstance(City.greenfieldCity.getId()).addRobot(new Robot(1, "", 0)));
+        Thread thread1 = new Thread(() -> AdministratorServer.getInstance(City.greenfieldCity.getId()).addRobot(new RobotBean(1, "", 0)));
+        Thread thread2 = new Thread(() -> AdministratorServer.getInstance(City.greenfieldCity.getId()).addRobot(new RobotBean(1, "", 0)));
+        Thread thread3 = new Thread(() -> AdministratorServer.getInstance(City.greenfieldCity.getId()).addRobot(new RobotBean(1, "", 0)));
+        Thread thread4 = new Thread(() -> AdministratorServer.getInstance(City.greenfieldCity.getId()).addRobot(new RobotBean(1, "", 0)));
+        Thread thread5 = new Thread(() -> AdministratorServer.getInstance(City.greenfieldCity.getId()).addRobot(new RobotBean(1, "", 0)));
+        Thread thread6 = new Thread(() -> AdministratorServer.getInstance(City.greenfieldCity.getId()).addRobot(new RobotBean(1, "", 0)));
 
         // Start the threads
         thread1.start();
@@ -86,16 +84,16 @@ public class AdminClientRESTTester {
     form.add("ipAddress", "localhost");
     form.add("portNumber", ((int)Math.floor(Math.random() * (9999 - 1000 + 1) + 1000)) + "");
     
-    RESTutils.RESTPostRobot(City.greenfieldCity,
+    RESTutils.RESTPostRobot(City.greenfieldCity.getId(),
     id, 
     "localhost", 
     ((int)Math.floor(Math.random() * (9999 - 1000 + 1) + 1000))
     );
   }
   public void getAllRobots() {
-    RESTutils.RESTGetAllRobots(City.greenfieldCity);
+    RESTutils.RESTGetAllRobots(City.greenfieldCity.getId());
   }
   public void randomRemove(int id) {
-    RESTutils.RESTDeleteRobot(City.greenfieldCity, id);
+    RESTutils.RESTDeleteRobot(City.greenfieldCity.getId(), id);
   }
 }

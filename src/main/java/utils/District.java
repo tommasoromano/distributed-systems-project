@@ -54,7 +54,12 @@ public class District {
   public List<RegisteredRobot> getRobots() {
     return this.registeredRobots;
   }
-
+  public boolean hasPosition(Position position) {
+    return this.grid.isPositionInGrid(position);
+  }
+  public boolean hasPosition(int x, int y) {
+    return this.grid.isPositionInGrid(x, y);
+  }
   public String getRepresentationAtPosition(Position position) {
     if (!this.grid.isPositionInGrid(position)) {
       return " ";

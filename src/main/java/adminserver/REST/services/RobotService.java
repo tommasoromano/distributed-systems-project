@@ -1,5 +1,7 @@
 package adminserver.REST.services;
 
+import java.util.List;
+
 import javax.ws.rs.Consumes;
 import javax.ws.rs.DELETE;
 import javax.ws.rs.FormParam;
@@ -11,7 +13,7 @@ import javax.ws.rs.Produces;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
 
-import adminserver.REST.beans.Robot;
+import adminserver.REST.beans.RobotBean;
 import adminserver.AdministratorServer;
 import utils.City;
 
@@ -39,23 +41,15 @@ public class RobotService {
         return Response.status(Response.Status.NOT_FOUND).build();
       }
 
-      // check if already exists a robot with the same id
-      for (Robot robot : AdministratorServer.getInstance(cityId).getRobots()) {
-        if (robot.getId() == id) {
-          return Response.status(Response.Status.CONFLICT).build();
-        }
-      }
+      // create robot
+      try {
+        RobotBean robotBean = new RobotBean(id, ipAddress, portNumber);
+        return Response.ok(AdministratorServer.getInstance(cityId).addRobot(robotBean)).build();
 
-      // check if id, ipAddress and portNumber exist and are valid
-      if (id <= 0 || ipAddress.equals("") || portNumber <= 0) {
+      } catch (Exception e) {
         return Response.status(Response.Status.BAD_REQUEST).build();
       }
 
-      // create robot
-      Robot robot = new Robot(id, ipAddress, portNumber);
-      AdministratorServer.getInstance(cityId).addRobot(robot);
-
-      return Response.ok("Robot "+id+", "+ipAddress+":"+portNumber+" inserted with success").build();
     }
 
     @DELETE
@@ -75,8 +69,8 @@ public class RobotService {
       }
 
       // check if exists a robot with the same id
-      for (Robot robot : AdministratorServer.getInstance(cityId).getRobots()) {
-        if (robot.getId() == id) {
+      for (RobotBean robotBean : AdministratorServer.getInstance(cityId).getRobots()) {
+        if (robotBean.getId() == id) {
           AdministratorServer.getInstance(cityId).removeRobotById(id);
           return Response.ok("Robot "+id+" removed with success").build();
         }
@@ -119,8 +113,8 @@ public class RobotService {
       }
 
       // check if exists a robot with the same id
-      for (Robot robot : AdministratorServer.getInstance(cityId).getRobots()) {
-        if (robot.getId() == id) {
+      for (RobotBean robotBean : AdministratorServer.getInstance(cityId).getRobots()) {
+        if (robotBean.getId() == id) {
           return Response.ok(
             AdministratorServer.getInstance(cityId).getStatistics().getAvgLastNByRobotId(id, n)
           ).build();

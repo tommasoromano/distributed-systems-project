@@ -19,7 +19,8 @@ public class RESTutils {
    * @param city
    * @return
    */
-  public static String getBaseURI(City city) {
+  public static String getBaseURI(int cityId) {
+    City city = City.getCityById(cityId);
     return "http://"+city.getHost()+":"+city.getPort()+"/robots/"+city.getId()+"/";
   }
 
@@ -89,28 +90,28 @@ public class RESTutils {
     return response;
   }
 
-  public static ClientResponse RESTPostRobot(City city, int id, String ipAddress, int portNumber) {
+  public static ClientResponse RESTPostRobot(int cityId, int id, String ipAddress, int portNumber) {
     Form form = new Form();
     form.add("id", id + "");
     form.add("ipAddress", "localhost");
     form.add("portNumber", ((int)Math.floor(Math.random() * (9999 - 1000 + 1) + 1000)) + "");
 
-    return RESTPost(getBaseURI(city)+"insert", form);
+    return RESTPost(getBaseURI(cityId)+"insert", form);
   }
 
-  public static ClientResponse RESTGetAllRobots(City city) {
-    return RESTGet(getBaseURI(city)+"robots");
+  public static ClientResponse RESTGetAllRobots(int cityId) {
+    return RESTGet(getBaseURI(cityId)+"robots");
   }
 
-  public static ClientResponse RESTDeleteRobot(City city, int id) {
-    return RESTDelete(getBaseURI(city)+"remove/"+id);
+  public static ClientResponse RESTDeleteRobot(int cityId, int id) {
+    return RESTDelete(getBaseURI(cityId)+"remove/"+id);
   }
 
-  public static ClientResponse RESTGetAvgLastNByRobotId(City city, int id, int n) {
-    return RESTGet(getBaseURI(city)+"pollution/avg_id_n/"+id+"/"+n);
+  public static ClientResponse RESTGetAvgLastNByRobotId(int cityId, int id, int n) {
+    return RESTGet(getBaseURI(cityId)+"pollution/avg_id_n/"+id+"/"+n);
   }
 
-  public static ClientResponse RESTGetAvgBetweenTimestamps(City city, long t1, long t2) {
-    return RESTGet(getBaseURI(city)+"pollution/avg_t1_t2/"+t1+"/"+t2);
+  public static ClientResponse RESTGetAvgBetweenTimestamps(int cityId, long t1, long t2) {
+    return RESTGet(getBaseURI(cityId)+"pollution/avg_t1_t2/"+t1+"/"+t2);
   }
 }

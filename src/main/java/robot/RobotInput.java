@@ -8,23 +8,21 @@ import utils.City;
 
 public class RobotInput implements Runnable {
 
-  private Robot robot;
-  public RobotInput(Robot robot) {
-    this.robot = robot;
+  public RobotInput() {
   }
 
   @Override
   public void run() {
     System.out.println("RobotInput running...");
     
-    robot.setCity(City.selectCityStdInput());
+    Robot.getInstance().setCityId(City.selectCityStdInput().getId());
 
     // robot init
     while(true) {
       BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
       String input;
 
-      System.out.println("Registering a new robot for "+robot.getCity().getName()+":");
+      System.out.println("Registering a new robot for "+City.getCityById(Robot.getInstance().getCityId()).getName()+":");
 
       try {
         System.out.println("Enter robot id or \"return\" for a random one:");
@@ -46,7 +44,7 @@ public class RobotInput implements Runnable {
         }
         int portNumber = Integer.parseInt(input);
 
-        this.robot.init(id, ipAddress, portNumber);
+        Robot.getInstance().init(id, ipAddress, portNumber);
 
         break;
       } catch (Exception e) {
@@ -60,6 +58,7 @@ public class RobotInput implements Runnable {
       String input;
 
       System.out.println("Robot main menu:");
+      System.out.println("3. quit");
 
       try {
         input = br.readLine();

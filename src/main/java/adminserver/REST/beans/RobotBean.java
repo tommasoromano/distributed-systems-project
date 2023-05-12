@@ -3,13 +3,16 @@ package adminserver.REST.beans;
 import javax.xml.bind.annotation.XmlRootElement;
 
 @XmlRootElement
-public class Robot {
+public class RobotBean {
     private int id;
     private String ipAddress;
     private int portNumber;
-    public Robot() {
+    public RobotBean() {
     }
-    public Robot(int id, String ipAddress, int portNumber) {
+    public RobotBean(int id, String ipAddress, int portNumber) {
+        if (id <= 0 || ipAddress.equals("") || portNumber <= 0) {
+            throw new IllegalArgumentException("Creating a robot with invalid parameters: id=" + id + ", ipAddress=" + ipAddress + ", portNumber=" + portNumber + ".");
+        }
         this.id = id;
         this.ipAddress = ipAddress;
         this.portNumber = portNumber;

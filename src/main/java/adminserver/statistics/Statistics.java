@@ -14,6 +14,8 @@ public class Statistics {
 
 	private StatisticsDB statisticsDB;
 
+	private List<Integer> validRobotIds;
+
   public Statistics(City city) {
 
     StatisticsBroker broker = new StatisticsBroker();
@@ -28,21 +30,39 @@ public class Statistics {
 		this.statisticsSubscriberThread = subscriberThread;
 		subscriberThread.start();
 
+		this.validRobotIds = new ArrayList<Integer>();
+
   }
 
-	public void addMeasurement(MeasurementRecord measurement) {
+	public synchronized void addMeasurement(MeasurementRecord measurement) {
+		if (!this.validRobotIds.contains(measurement.getRobotId())) {
+			System.out.println("Statistics: received measurement from invalid robotId: " + measurement.getRobotId());
+			return;
+		}
 		this.statisticsDB.addMeasurement(measurement);
 	}
 
-	public double getAvgLastNByRobotId(int robotId, int n) {
+	public synchronized double getAvgLastNByRobotId(int robotId, int n) {
+		if (!this.validRobotIds.contains(robotId)) {
+			System.out.println("Statistics: received get_avg_last_n from invalid robotId: " + robotId);
+			return -1;
+		}
 		return this.statisticsDB.getAvgLastNByRobotId(robotId, n);
 	}
 
-	public double getAvgBetweenTimestamps(long t1, long t2) {
+	public synchronized double getAvgBetweenTimestamps(long t1, long t2) {
 		return this.statisticsDB.getAvgBetweenTimestamps(t1, t2);
 	}
-	public String toDBRepersentation() {
+	public synchronized String toDBRepersentation() {
 		return this.statisticsDB.dbToString();
+	}
+
+	public synchronized void setValidRobotIds(List<Integer> validRobotIds) {
+
+		System.out.println("Statistics: setting valid robot ids: " + validRobotIds);
+
+		this.validRobotIds = validRobotIds;
+		this.statisticsDB.removeRecordsNotInValidRobotIds(validRobotIds);
 	}
 
 }

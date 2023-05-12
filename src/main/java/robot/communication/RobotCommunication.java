@@ -5,6 +5,8 @@ import java.util.List;
 import javax.ws.rs.core.Response;
 
 import adminserver.REST.RESTutils;
+import adminserver.REST.beans.InsertRobotBean;
+
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
@@ -21,47 +23,48 @@ import robot.Robot;
 import utils.City;
 
 public class RobotCommunication {
-  
-  private Robot robot;
 
   private MqttClient client;
 
-  public RobotCommunication(Robot robot) {
-    this.robot = robot;
+  public RobotCommunication() {
   }
 
   /**
    * requires the robot to be initialized
    * @return
    */
-  public boolean joinNetwork() {
+  public InsertRobotBean joinNetwork() {
 
-    System.out.println("Robot "+this.robot.getId()+" is trying to join the network.");
+    Robot robot = Robot.getInstance();
 
-    Form form = new Form();
-    form.add("id", this.robot.getId() + "");
-    form.add("ipAddress", this.robot.getIpAddress());
-    form.add("portNumber", this.robot.getPortNumber() + "");
+    System.out.println("Communication: Robot "+robot.getId()+" is trying to join the network.");
+    InsertRobotBean insertRobotBean = null;
 
-    ClientResponse response = RESTutils.RESTPost(RESTutils.getBaseURI(this.robot.getCity())+"insert", form);
+    ClientResponse response = RESTutils.RESTPostRobot(
+          robot.getCityId(),
+          robot.getId(), 
+          robot.getIpAddress(), 
+          robot.getPortNumber()
+        );
 
     if (response.getStatus() != Response.Status.OK.getStatusCode()) {
-      System.out.println("Robot "+this.robot.getId()+" failed to join the network.");
-      return false;
+      System.out.println("Communication: Robot "+robot.getId()+" failed to join the network."
+          + "\n\tError code: " + response.getStatus());
+      throw new RuntimeException("Robot "+robot.getId()+" failed to join the network." 
+          + "\n\tError code: " + response.getStatus());
     }
 
-    System.out.println("This Robot "+this.robot.getId()+" joined the network.");
+    System.out.println("Communication: This Robot "+robot.getId()+" joined the network.");
 
     try {
-      List<Robot> robots = response.getEntity(new GenericType<List<Robot>>() {});
-      for (Robot robot : robots) {
-        System.out.println("This Robot "+this.robot.getId()+" received robot "+robot.getId()+" from the network.");
-      }
+      insertRobotBean = response.getEntity(InsertRobotBean.class);
     } catch (Exception e) {
-      System.out.println("Error: "+e.getMessage());
-      this.robot.disconnect();
-      return false;
+      System.out.println("Communication: Error: "+e.getMessage());
+      robot.disconnect();
+      return null;
     }
+
+    //! maybe split this is in anpther function
 
     // create mqtt
     String broker = "tcp://localhost:1883";
@@ -72,9 +75,9 @@ public class RobotCommunication {
         connOpts.setCleanSession(true); // false = the broker stores all subscriptions for the client and all missed messages for the client that subscribed with a Qos level 1 or 2
 
         // Connect the client
-        System.out.println(clientId + " Connecting Broker " + broker);
+        System.out.println("Communication: " + clientId + " Connecting Broker " + broker);
         client.connect(connOpts);
-        System.out.println(clientId + " Connected Broker " + broker);
+        System.out.println("Communication: " + clientId + " Connected Broker " + broker);
 
     } catch (MqttException me ) {
         System.out.println("reason " + me.getReasonCode());
@@ -83,21 +86,47 @@ public class RobotCommunication {
         System.out.println("cause " + me.getCause());
         System.out.println("excep " + me);
         
-        this.robot.disconnect();
+        robot.disconnect();
+        return null;
     }
 
-    return true;
+    // send message to all robots
+
+    return insertRobotBean;
+
   }
 
   public void sendMQTTMessage(String payload) {
+    Robot robot = Robot.getInstance();
     try {
-      String topic = this.robot.getCity().getName().toLowerCase()+"/pollution/district1";
+      String topic = City.getCityById(robot.getCityId()).getName().toLowerCase()
+        +"/pollution/district"+robot.getDistrictId();
       MqttMessage message = new MqttMessage(payload.getBytes());
       message.setQos(2);
       client.publish(topic, message);
     } catch (MqttException e) {
-      System.out.println("Error: "+e.getMessage());
+      System.out.println("Communication: Error: "+e.getMessage());
     }
+  }
+
+  public void disconnect() {
+
+    Robot robot = Robot.getInstance();
+    System.out.println("Communication: Robot "+robot.getId()+" is trying to leave the network.");
+    
+    // send message to the admin
+    ClientResponse response = RESTutils.RESTDeleteRobot(robot.getCityId(), robot.getId());
+    if (response.getStatus() != Response.Status.OK.getStatusCode()) {
+      System.out.println("Communication: Robot "+robot.getId()+" failed to leave the network."
+          + "\n\tError code: " + response.getStatus());
+      throw new RuntimeException("Robot "+robot.getId()+" failed to leave the network." 
+          + "\n\tError code: " + response.getStatus());
+    }
+
+    // send messages to the other robots
+
+    System.out.println("Communication: Robot "+robot.getId()+" left the network.");
+
   }
 
 }

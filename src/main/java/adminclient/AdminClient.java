@@ -16,6 +16,7 @@ public class AdminClient {
     String input;
 
     City city = City.selectCityStdInput();
+    int cityId = city.getId();
 
     boolean exit = false;
     while (!exit) {
@@ -33,7 +34,7 @@ public class AdminClient {
         case 1:
           System.out.println("Get all robots:");
           try {
-            getAllRobots(city);
+            getAllRobots(cityId);
           } catch (Exception e) {
             System.out.println("Error: "+e.getMessage());
           }
@@ -41,7 +42,7 @@ public class AdminClient {
         case 2:
           System.out.println("Get average of n measurements of robot:");
           try {
-            getAvgLastNByRobotId(city);
+            getAvgLastNByRobotId(cityId);
           } catch (Exception e) {
             System.out.println("Error: "+e.getMessage());
           }
@@ -49,7 +50,7 @@ public class AdminClient {
         case 3:
           System.out.println("Get average measurement between t1 and t2:");
           try {
-            getAvgBetweenTimestamps(city);
+            getAvgBetweenTimestamps(cityId);
           } catch (Exception e) {
             System.out.println("Error: "+e.getMessage());
           }
@@ -57,7 +58,7 @@ public class AdminClient {
         case 4:
           System.out.println("Get city representation:");
           try {
-            getCityRepresentation(city);
+            getCityRepresentation(cityId);
           } catch (Exception e) {
             System.out.println("Error: "+e.getMessage());
           }
@@ -65,7 +66,7 @@ public class AdminClient {
         case 5:
           System.out.println("Get measurement DB");
           try {
-            getMeasurementDB(city);
+            getMeasurementDB(cityId);
           } catch (Exception e) {
             System.out.println("Error: "+e.getMessage());
           }
@@ -80,9 +81,9 @@ public class AdminClient {
 
   }
 
-  private static void getAllRobots(City city) {
+  private static void getAllRobots(int cityId) {
 
-    ClientResponse response = RESTutils.RESTGetAllRobots(city);
+    ClientResponse response = RESTutils.RESTGetAllRobots(cityId);
     
     if (response.getStatus() == 200) {
       System.out.println("All robots:");
@@ -92,9 +93,9 @@ public class AdminClient {
 
   }
 
-  private static void getCityRepresentation(City city) {
+  private static void getCityRepresentation(int cityId) {
 
-    ClientResponse response = RESTutils.RESTGet(RESTutils.getBaseURI(city)+"city");
+    ClientResponse response = RESTutils.RESTGet(RESTutils.getBaseURI(cityId)+"city");
     
     if (response.getStatus() == 200) {
       System.out.println("City representation:");
@@ -104,7 +105,7 @@ public class AdminClient {
 
   }
 
-  private static void getAvgLastNByRobotId(City city) {
+  private static void getAvgLastNByRobotId(int cityId) {
     
     BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
     String input;
@@ -120,7 +121,7 @@ public class AdminClient {
         input = br.readLine();
         int n = Integer.parseInt(input);
 
-        ClientResponse response = RESTutils.RESTGetAvgLastNByRobotId(city, robotId, n);
+        ClientResponse response = RESTutils.RESTGetAvgLastNByRobotId(cityId, robotId, n);
 
         if (response.getStatus() == 200) {
           System.out.println("Average of last "+n+" measurements of robot "+robotId+":");
@@ -135,7 +136,7 @@ public class AdminClient {
 
   }
 
-  private static void getAvgBetweenTimestamps(City city) {
+  private static void getAvgBetweenTimestamps(int cityId) {
 
     BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
     String input;
@@ -151,7 +152,7 @@ public class AdminClient {
         input = br.readLine();
         long t2 = Long.parseLong(input);
 
-        ClientResponse response = RESTutils.RESTGetAvgBetweenTimestamps(city, t1, t2);
+        ClientResponse response = RESTutils.RESTGetAvgBetweenTimestamps(cityId, t1, t2);
 
         if (response.getStatus() == 200) {
           System.out.println("Average measurement between "+t1+" and "+t2+":");
@@ -166,9 +167,9 @@ public class AdminClient {
 
   }
 
-  private static void getMeasurementDB(City city) {
+  private static void getMeasurementDB(int cityId) {
 
-    ClientResponse response = RESTutils.RESTGet(RESTutils.getBaseURI(city)+"pollution/db");
+    ClientResponse response = RESTutils.RESTGet(RESTutils.getBaseURI(cityId)+"pollution/db");
     
     if (response.getStatus() == 200) {
       System.out.println("Measurement DB:");
