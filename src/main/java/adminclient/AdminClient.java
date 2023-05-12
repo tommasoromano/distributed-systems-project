@@ -9,6 +9,13 @@ import com.sun.jersey.api.client.ClientResponse;
 import adminserver.REST.RESTutils;
 import utils.City;
 
+/**
+ * The Administrator Client consists of a simple command-line interface that
+ * enables interacting with the REST interface provided by the Administrator
+ * Server. Hence, this application prints a straightforward menu to select one of
+ * the services offered by the administrator server described in Section 5.3 (e.g.,
+ * the list of the smart city robots), and to enter possible required parameters.
+ */
 public class AdminClient {
   // https://eclipse-ee4j.github.io/jersey.github.io/documentation/1.19.1/client-api.html
   public static void main(String[] args) throws IOException {

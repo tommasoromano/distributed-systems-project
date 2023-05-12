@@ -101,7 +101,22 @@ public class Robot {
   }
 
   ////////////////////////////////////////////////////////////
-  // DISCONNECT
+  // 
+  //  DISCONNECT
+  // 
+  // Cleaning robots can terminate in a controlled way. Specifically, only when
+  // the message ”quit” is inserted into the command line of a robot process, it
+  // will leave the system. At the same time, you must handle also those cases
+  // in which a robot unexpectedly leaves the system (e.g., for a crash simulated
+  // by stopping the robot process).
+  // When a robot wants to leave the system in a controlled way, it must
+  // follow the next steps:
+  // • complete any operation at the mechanic
+  // • notify the other robots of Greenfield
+  // • request the Administrator Server to leave the smart city
+  // When a robot unexpectedly leaves the system, the other robots must
+  // have a mechanism that allows them to detect this event in order to inform
+  // the Administrator Server.
   ////////////////////////////////////////////////////////////
 
   /**

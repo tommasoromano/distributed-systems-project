@@ -3,12 +3,20 @@ package adminserver.statistics;
 import java.util.ArrayList;
 import java.util.List;
 
-import adminserver.AdministratorServer;
-import simulator.Measurement;
 import utils.City;
 
+/**
+ * The Administrator Server has to collect through MQTT the air pollution 
+ * measurements sent by the cleaning robots of Greenfield. More specifically,
+ * the Administrator Server assumes the role of the subscriber for the following
+ * four MQTT topics: greenfield/pollution/district{i}.<p>
+ * The air pollution measurements have to be stored in proper data structures
+ * that will be used to perform subsequent analyses.
+ */
 public class Statistics {
 
+	private StatisticsBroker statisticsBroker;
+	private StatisticSubscriber statisticsSubscriber;
 	private Thread statisticsBrokerThread;
 	private Thread statisticsSubscriberThread;
 
@@ -19,6 +27,7 @@ public class Statistics {
   public Statistics(City city) {
 
     StatisticsBroker broker = new StatisticsBroker();
+		this.statisticsBroker = broker;
 		Thread brokerThread = new Thread(broker);
 		this.statisticsBrokerThread = brokerThread;
 		brokerThread.start();
@@ -26,6 +35,7 @@ public class Statistics {
 		this.statisticsDB = StatisticsDB.getInstance();
 
 		StatisticSubscriber subscriber = new StatisticSubscriber(city);
+		this.statisticsSubscriber = subscriber;
 		Thread subscriberThread = new Thread(subscriber);
 		this.statisticsSubscriberThread = subscriberThread;
 		subscriberThread.start();

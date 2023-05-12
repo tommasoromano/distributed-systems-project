@@ -58,10 +58,18 @@ public class RobotInput implements Runnable {
       String input;
 
       System.out.println("Robot main menu:");
-      System.out.println("3. quit");
+      System.out.println("1. Leave the network and quit");
 
       try {
         input = br.readLine();
+        switch (input) {
+          case "1":
+            Robot.getInstance().disconnect();
+            break;
+          default:
+            System.out.println("Invalid option.");
+            break;
+        }
       } catch (Exception e) {
         System.out.println("Error: "+e.getMessage());
       }
