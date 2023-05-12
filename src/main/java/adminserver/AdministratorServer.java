@@ -1,18 +1,14 @@
 package adminserver;
 
-import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
-import org.eclipse.paho.client.mqttv3.MqttCallback;
-import org.eclipse.paho.client.mqttv3.MqttClient;
-import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
-import org.eclipse.paho.client.mqttv3.MqttException;
-import org.eclipse.paho.client.mqttv3.MqttMessage;
-
+import adminserver.REST.AdminServerThread;
 import adminserver.REST.beans.Robot;
-import mqttbroker.StatisticsBroker;
+import adminserver.statistics.Statistics;
+import utils.City;
+import utils.District;
+import utils.Position;
 
 /**
  * The Administrator Server is a single application that is in charge of:<p>
@@ -27,6 +23,8 @@ public class AdministratorServer {
 	private Statistics statistics;
 	private static AdministratorServer instance = null;
 
+	private Thread httpServerThread;
+
 	private AdministratorServer(int cityId) {
 		// check if cityId is in the list of cities
 		if (!City.isValidCityId(cityId)) {
@@ -36,10 +34,18 @@ public class AdministratorServer {
 		this.city = City.getCityById(cityId);
 		this.registeredRobots = new ArrayList<RegisteredRobot>();
 
-		this.startStatistics();
+		this.startHttpServer();
+		this.statistics = new Statistics(this.city);
+	}
+	
+	private void startHttpServer() {
+		AdminServerThread admin = new AdminServerThread(this.city);
+		Thread adminThread = new Thread(admin);
+		this.httpServerThread = adminThread;
+		adminThread.start();
 	}
 
-	public synchronized static AdministratorServer getInstance(int cityId) {
+	public static AdministratorServer getInstance(int cityId) {
 		if (instance == null) {
 			instance = new AdministratorServer(cityId);
 		}
@@ -47,6 +53,16 @@ public class AdministratorServer {
 			throw new IllegalArgumentException("Invalid cityId");
 		}
 		return instance;
+	}
+	public static AdministratorServer getInstance() {
+		if (instance == null) {
+			throw new IllegalStateException("AdministratorServer not initialized");
+		}
+		return instance;
+	}
+
+	public City getCity() {
+		return this.city;
 	}
 
 	public synchronized void addRobot(Robot robot) {
@@ -96,16 +112,12 @@ public class AdministratorServer {
 			}
 		}
 	}
-	private void startStatistics() {
 
-		this.statistics = new Statistics();
+	public Statistics getStatistics() {
+		return this.statistics;
+	}
 
-		StatisticsBroker broker = new StatisticsBroker();
-		Thread brokerThread = new Thread(broker);
-		brokerThread.start();
-
-		StatisticSubscriber subscriber = new StatisticSubscriber(this.city);
-		Thread subscriberThread = new Thread(subscriber);
-		subscriberThread.start();
+	public synchronized String getCityRepresentation() {
+		return this.city.getRepresentation();
 	}
 }

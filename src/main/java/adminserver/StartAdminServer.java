@@ -1,22 +1,16 @@
 package adminserver;
 
-import com.sun.jersey.api.container.httpserver.HttpServerFactory;
-import com.sun.net.httpserver.HttpServer;
+import utils.City;
 
 public class StartAdminServer {
 
   public static void main(String[] args) throws Exception {
 
-      System.out.println("Starting server...");
+      System.out.println("Starting Administrator Server...");
 
-      City city = City.greenfieldCity;
-      System.out.println("City: "+city.getName());
+      City city = City.selectCityStdInput();
 
       AdministratorServer administratorServer = AdministratorServer.getInstance(city.getId());
 
-      HttpServer server = HttpServerFactory.create("http://"+city.getHost()+":"+city.getPort()+"/");
-      server.start();
-
-      System.out.println("Server started on: http://"+city.getHost()+":"+city.getPort());
   }
 }

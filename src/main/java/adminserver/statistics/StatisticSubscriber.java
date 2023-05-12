@@ -1,9 +1,7 @@
-package adminserver;
+package adminserver.statistics;
 
 import java.sql.Timestamp;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Scanner;
 
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.MqttCallback;
@@ -12,11 +10,19 @@ import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 
+import adminserver.AdministratorServer;
+import io.opencensus.stats.Measure;
+import simulator.Measurement;
+import utils.City;
+
 public class StatisticSubscriber implements Runnable {
 
   private City city;
   public StatisticSubscriber(City city) {
     this.city = city;
+  }
+  public StatisticSubscriber() {
+    this.city = AdministratorServer.getInstance().getCity();
   }
 
   @Override
@@ -24,14 +30,12 @@ public class StatisticSubscriber implements Runnable {
     MqttClient client;
     String broker = "tcp://localhost:1883";
     String clientId = MqttClient.generateClientId();
-    String pubTopic = "home/sensors/master";
     String[] subTopicArray = new String[this.city.getDistricts().size()];
     int[] subQosArray = new int[this.city.getDistricts().size()];
     for (int i = 0; i < this.city.getDistricts().size(); i++) {
-      subTopicArray[i] = this.city.getName().toLowerCase()+"/pollution/district" + this.city.getDistricts().get(i).getId();
+      subTopicArray[i] = cityDistrictToTopic(city, i);
       subQosArray[i] = 2;
     }
-    int pubQos = 2;
 
     try {
         client = new MqttClient(broker, clientId);
@@ -55,8 +59,11 @@ public class StatisticSubscriber implements Runnable {
                         "\n\tTopic:   " + topic +
                         "\n\tMessage: " + receivedMessage +
                         "\n\tQoS:     " + message.getQos() + "\n");
-
                 
+                AdministratorServer.getInstance().getStatistics()
+                  .addMeasurement(
+                    MeasurementRecord.parseMeasurementRecord(receivedMessage)
+                  );
             }
 
             public void connectionLost(Throwable cause) {
@@ -75,17 +82,6 @@ public class StatisticSubscriber implements Runnable {
         client.subscribe(subTopicArray,subQosArray);
         System.out.println(clientId + " Subscribed to topics : " + Arrays.toString(subTopicArray));
 
-
-        // String payload = "Client connected at time: " + new Timestamp(System.currentTimeMillis()).toString();
-        // MqttMessage message = new MqttMessage(payload.getBytes());
-        // // Set the QoS on the Message
-        // message.setQos(pubQos);
-        // System.out.println(clientId + " Publishing message: " + payload + " ...");
-        // client.publish(pubTopic, message);
-        // System.out.println(clientId + " Message published - Thread PID: " + Thread.currentThread().getId());
-
-        // client.disconnect();
-
     } catch (MqttException me ) {
         System.out.println("reason " + me.getReasonCode());
         System.out.println("msg " + me.getMessage());
@@ -95,4 +91,9 @@ public class StatisticSubscriber implements Runnable {
         me.printStackTrace();
     }
   }
+
+  public static String cityDistrictToTopic(City city, int districtId) {
+    return city.getName().toLowerCase()+"/pollution/district" + districtId;
+  }
+
 }

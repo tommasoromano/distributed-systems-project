@@ -5,35 +5,38 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import adminserver.AdministratorServer;
-import adminserver.City;
+import adminserver.REST.RESTutils;
+import utils.City;
 import adminserver.REST.beans.Robot;
 
 import org.junit.Test;
 import static org.junit.Assert.assertEquals;
 
-import com.sun.jersey.api.client.Client;
-import com.sun.jersey.api.client.WebResource;
 import com.sun.jersey.api.representation.Form;
+
+import adminclient.AdminClient;
 
 public class AdminClientRESTTester {
 
     @Test
     public void testConcurrentCalls() throws InterruptedException {
 
-        ExecutorService executor = Executors.newFixedThreadPool(20);
+        int nThreads = 20;
+        ExecutorService executor = Executors.newFixedThreadPool(nThreads);
 
-        for (int i = 0; i < 20; i++) {
+        for (int i = 0; i < nThreads; i++) {
             final int j = i;
             executor.submit(() -> {
                 try {
                     Thread.sleep((long) (Math.random() * 100));
                     int randAction = ((int)Math.floor(Math.random() * (2 - 0 + 1) + 0));
+                    int randId = 10;
                     if (randAction == 0) {
-                        randomInsert(((int)Math.floor(Math.random() * (3 - 1 + 1) + 1)));
+                        randomInsert(((int)Math.floor(Math.random() * (randId - 1 + 1) + 1)));
                     } else if (randAction == 1) {
                         getAllRobots();
                     } else if (randAction == 2) {
-                        randomRemove(((int)Math.floor(Math.random() * (3 - 1 + 1) + 1)));
+                        randomRemove(((int)Math.floor(Math.random() * (randId - 1 + 1) + 1)));
                     }
                 } catch (InterruptedException e) {
                     e.printStackTrace();
@@ -77,31 +80,22 @@ public class AdminClientRESTTester {
     }
 
   public void randomInsert(int id) {
-    Client client = Client.create();
-    WebResource resource = client.resource(getBaseURI()+"insert");
+    
     Form form = new Form();
     form.add("id", id + "");
     form.add("ipAddress", "localhost");
     form.add("portNumber", ((int)Math.floor(Math.random() * (9999 - 1000 + 1) + 1000)) + "");
-    System.out.println("POST Request: \n" + resource.getURI() + "\nForm:\n" + form);
-    String response = resource.post(String.class, form);
-    System.out.println("POST Response: \n" + response);
+    
+    RESTutils.RESTPostRobot(City.greenfieldCity,
+    id, 
+    "localhost", 
+    ((int)Math.floor(Math.random() * (9999 - 1000 + 1) + 1000))
+    );
   }
   public void getAllRobots() {
-    Client client = Client.create();
-    WebResource resource = client.resource(getBaseURI()+"robots");
-    System.out.println("GET Request: \n" + resource.getURI());
-    String response = resource.get(String.class);
-    System.out.println("GET Response: \n" + response);
+    RESTutils.RESTGetAllRobots(City.greenfieldCity);
   }
   public void randomRemove(int id) {
-    Client client = Client.create();
-    WebResource resource = client.resource(getBaseURI()+"remove/"+id);
-    System.out.println("DELETE Request: \n" + resource.getURI());
-    String response = resource.delete(String.class);
-    System.out.println("DELETE Response: \n" + response);
-  }
-  public String getBaseURI() {
-    return "http://localhost:6789/robots/1/";
+    RESTutils.RESTDeleteRobot(City.greenfieldCity, id);
   }
 }

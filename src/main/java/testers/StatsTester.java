@@ -1,20 +1,19 @@
 package testers;
 
-import java.sql.Timestamp;
-import java.util.Arrays;
-
-import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
-import org.eclipse.paho.client.mqttv3.MqttCallback;
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.junit.Test;
 
-import adminserver.City;
+import adminserver.statistics.MeasurementRecord;
+import utils.City;
 import simulator.Measurement;
 
 public class StatsTester {
+  public static void main(String[] args) {
+    new StatsTester().statsTets();
+  }
   @Test
   public void statsTets() {
     City city = City.greenfieldCity;
@@ -22,12 +21,6 @@ public class StatsTester {
     String broker = "tcp://localhost:1883";
     String clientId = MqttClient.generateClientId();
     String pubTopic = "greenfield/pollution/district1";
-    String[] subTopicArray = new String[city.getDistricts().size()];
-    int[] subQosArray = new int[city.getDistricts().size()];
-    for (int i = 0; i < city.getDistricts().size(); i++) {
-      subTopicArray[i] = city.getName().toLowerCase()+"/pollution/district" + city.getDistricts().get(i).getId();
-      subQosArray[i] = 2;
-    }
     int pubQos = 2;
 
     try {
@@ -40,8 +33,17 @@ public class StatsTester {
         client.connect(connOpts);
         System.out.println(clientId + " Connected " + Thread.currentThread().getId());
 
-        for (int i = 0; i < 10; i++) {
-          String payload = new Measurement("id", "type", Math.random()*100000, System.currentTimeMillis()).toString();
+        for (int i = 0; i < 100; i++) {
+          int district = ((int)Math.floor(Math.random() * (3 - 1 + 1) + 1));
+          int id = ((int)Math.floor(Math.random() * (10 - 1 + 1) + 1));
+          // String payload = new Measurement(id, "type", Math.random()*100000, System.currentTimeMillis()).toString();
+          String payload = new MeasurementRecord(
+            district,
+            id, 
+            System.currentTimeMillis(),
+            "type", 
+            (double)Math.random()*100000
+          ).toLine();
           MqttMessage message = new MqttMessage(payload.getBytes());
           // Set the QoS on the Message
           message.setQos(pubQos);

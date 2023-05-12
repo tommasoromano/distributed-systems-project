@@ -13,7 +13,7 @@ import javax.ws.rs.core.Response;
 
 import adminserver.REST.beans.Robot;
 import adminserver.AdministratorServer;
-import adminserver.City;
+import utils.City;
 
 @Path("/robots")
 public class RobotService {
@@ -28,25 +28,26 @@ public class RobotService {
                                 @FormParam("portNumber") int portNumber
       ) {
 
-      System.out.println("REST Inserting robot "+id+", "+ipAddress+":"+portNumber);
+      System.out.println("Received REST POST /{cityId}/insert"
+                        + "\n\tcityId:      "+cityId
+                        + "\n\tid:          "+id
+                        + "\n\tipAddress:   "+ipAddress
+                        + "\n\tportNumber:  "+portNumber);
         
       // check if cityId is in the list of cities
       if (!City.isValidCityId(cityId)) {
-        System.out.println(">>> INSERT: City "+cityId+" not found");
         return Response.status(Response.Status.NOT_FOUND).build();
       }
 
       // check if already exists a robot with the same id
       for (Robot robot : AdministratorServer.getInstance(cityId).getRobots()) {
         if (robot.getId() == id) {
-          System.out.println(">>> INSERT: Robot "+id+" already exists");
           return Response.status(Response.Status.CONFLICT).build();
         }
       }
 
       // check if id, ipAddress and portNumber exist and are valid
       if (id <= 0 || ipAddress.equals("") || portNumber <= 0) {
-        System.out.println(">>> INSERT: Invalid robot data");
         return Response.status(Response.Status.BAD_REQUEST).build();
       }
 
@@ -54,7 +55,6 @@ public class RobotService {
       Robot robot = new Robot(id, ipAddress, portNumber);
       AdministratorServer.getInstance(cityId).addRobot(robot);
 
-      System.out.println(">>> INSERT: Robot "+id+", "+ipAddress+":"+portNumber+" inserted with success");
       return Response.ok("Robot "+id+", "+ipAddress+":"+portNumber+" inserted with success").build();
     }
 
@@ -65,11 +65,12 @@ public class RobotService {
                                 @PathParam("id") int id
       ) {
 
-      System.out.println("REST Removing robot "+id);
+      System.out.println("Received REST DELETE /{cityId}/remove/{id}"
+                        + "\n\tcityId:      "+cityId
+                        + "\n\tid:          "+id);
 
       // check if cityId is in the list of cities
       if (!City.isValidCityId(cityId)) {
-        System.out.println(">>> REMOVE: City "+cityId+" not found");
         return Response.status(Response.Status.NOT_FOUND).build();
       }
 
@@ -77,11 +78,9 @@ public class RobotService {
       for (Robot robot : AdministratorServer.getInstance(cityId).getRobots()) {
         if (robot.getId() == id) {
           AdministratorServer.getInstance(cityId).removeRobotById(id);
-          System.out.println(">>> REMOVE: Robot "+id+" removed with success");
           return Response.ok("Robot "+id+" removed with success").build();
         }
       }
-      System.out.println(">>> REMOVE: Robot "+id+" not found");
       return Response.status(Response.Status.NOT_FOUND).build();
     }
 
@@ -90,25 +89,29 @@ public class RobotService {
     @Produces(MediaType.APPLICATION_JSON)
     public Response getRobots(@PathParam("cityId") int cityId) {
 
-      System.out.println("REST Getting robots");
+      System.out.println("Received REST GET /{cityId}/robots"
+                        + "\n\tcityId:      "+cityId);
 
       // check if cityId is in the list of cities
       if (!City.isValidCityId(cityId)) {
-        System.out.println(">>> GET: City "+cityId+" not found");
         return Response.status(Response.Status.NOT_FOUND).build();
       }
 
-      System.out.println(">>> GET: City "+cityId+" robots returned with success");
       return Response.ok(AdministratorServer.getInstance(cityId).getRobots()).build();
     }
 
     @GET
-    @Path("/{cityId}/pollution/avg_n/{id}/{n}")
+    @Path("/{cityId}/pollution/avg_id_n/{id}/{n}")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getNPollutionOfRobotId( @PathParam("cityId") int cityId,
                                             @PathParam("id") int id,
                                             @PathParam("n") int n
       ) {
+
+      System.out.println("Received REST GET /{cityId}/pollution/avg_n/{id}/{n}"
+                        + "\n\tcityId:      "+cityId
+                        + "\n\tid:          "+id
+                        + "\n\tn:           "+n);
 
       // check if cityId is in the list of cities
       if (!City.isValidCityId(cityId)) {
@@ -118,7 +121,9 @@ public class RobotService {
       // check if exists a robot with the same id
       for (Robot robot : AdministratorServer.getInstance(cityId).getRobots()) {
         if (robot.getId() == id) {
-          return Response.ok().build();
+          return Response.ok(
+            AdministratorServer.getInstance(cityId).getStatistics().getAvgLastNByRobotId(id, n)
+          ).build();
         }
       }
       return Response.status(Response.Status.NOT_FOUND).build();
@@ -128,16 +133,55 @@ public class RobotService {
     @Path("/{cityId}/pollution/avg_t1_t2/{t1}/{t2}")
     @Produces(MediaType.APPLICATION_JSON)
     public Response getAvgPollutionBetweenT1AndT2(@PathParam("cityId") int cityId,
-                                                  @PathParam("t1") int t1,
-                                                  @PathParam("t2") int t2
+                                                  @PathParam("t1") long t1,
+                                                  @PathParam("t2") long t2
       ) {
+
+      System.out.println("Received REST GET /{cityId}/pollution/avg_t1_t2/{t1}/{t2}"
+                        + "\n\tcityId:      "+cityId
+                        + "\n\tt1:          "+t1
+                        + "\n\tt2:          "+t2);
 
       // check if cityId is in the list of cities
       if (!City.isValidCityId(cityId)) {
         return Response.status(Response.Status.NOT_FOUND).build();
       }
 
-      return Response.ok().build();
+      return Response.ok(
+        AdministratorServer.getInstance(cityId).getStatistics().getAvgBetweenTimestamps(t1, t2)
+      ).build();
+    }
+
+    @GET
+    @Path("/{cityId}/city")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getCityRepresentation(@PathParam("cityId") int cityId) {
+
+      System.out.println("Received REST GET /{cityId}/city"
+                        + "\n\tcityId:      "+cityId);
+
+      // check if cityId is in the list of cities
+      if (!City.isValidCityId(cityId)) {
+        return Response.status(Response.Status.NOT_FOUND).build();
+      }
+
+      return Response.ok(AdministratorServer.getInstance(cityId).getCityRepresentation()).build();
+    }
+
+    @GET
+    @Path("/{cityId}/pollution/db")
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response getMeasurementDB(@PathParam("cityId") int cityId) {
+
+      System.out.println("Received REST GET /{cityId}/pollution/db"
+                        + "\n\tcityId:      "+cityId);
+
+      // check if cityId is in the list of cities
+      if (!City.isValidCityId(cityId)) {
+        return Response.status(Response.Status.NOT_FOUND).build();
+      }
+
+      return Response.ok(AdministratorServer.getInstance(cityId).getStatistics().toDBRepersentation()).build();
     }
 
 }
