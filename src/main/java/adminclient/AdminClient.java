@@ -102,7 +102,7 @@ public class AdminClient {
 
   private static void getCityRepresentation(int cityId) {
 
-    ClientResponse response = RESTutils.RESTGet(RESTutils.getBaseURI(cityId)+"city");
+    ClientResponse response = RESTutils.RESTGet(RESTutils.getClientsURI(cityId)+"city");
     
     if (response.getStatus() == 200) {
       System.out.println("City representation:");
@@ -176,7 +176,7 @@ public class AdminClient {
 
   private static void getMeasurementDB(int cityId) {
 
-    ClientResponse response = RESTutils.RESTGet(RESTutils.getBaseURI(cityId)+"pollution/db");
+    ClientResponse response = RESTutils.RESTGet(RESTutils.getClientsURI(cityId)+"pollution/db");
     
     if (response.getStatus() == 200) {
       System.out.println("Measurement DB:");

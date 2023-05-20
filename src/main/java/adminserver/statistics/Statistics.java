@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import utils.City;
+import utils.MeasurementRecord;
 
 /**
  * The Administrator Server has to collect through MQTT the air pollution 
@@ -45,18 +46,18 @@ public class Statistics {
   }
 
 	public synchronized void addMeasurement(MeasurementRecord measurement) {
-		if (!this.validRobotIds.contains(measurement.getRobotId())) {
-			System.out.println("Statistics: received measurement from invalid robotId: " + measurement.getRobotId());
-			return;
-		}
+		// if (!this.validRobotIds.contains(measurement.getRobotId())) {
+		// 	System.out.println("Statistics: received measurement from invalid robotId: " + measurement.getRobotId());
+		// 	return;
+		// }
 		this.statisticsDB.addMeasurement(measurement);
 	}
 
 	public synchronized double getAvgLastNByRobotId(int robotId, int n) {
-		if (!this.validRobotIds.contains(robotId)) {
-			System.out.println("Statistics: received get_avg_last_n from invalid robotId: " + robotId);
-			return -1;
-		}
+		// if (!this.validRobotIds.contains(robotId)) {
+		// 	System.out.println("Statistics: received get_avg_last_n from invalid robotId: " + robotId);
+		// 	return -1;
+		// }
 		return this.statisticsDB.getAvgLastNByRobotId(robotId, n);
 	}
 

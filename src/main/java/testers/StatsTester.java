@@ -6,9 +6,8 @@ import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.junit.Test;
 
-import adminserver.statistics.MeasurementRecord;
+import utils.MeasurementRecord;
 import utils.City;
-import simulator.Measurement;
 
 public class StatsTester {
   public static void main(String[] args) {
@@ -38,12 +37,11 @@ public class StatsTester {
           int id = ((int)Math.floor(Math.random() * (10 - 1 + 1) + 1));
           // String payload = new Measurement(id, "type", Math.random()*100000, System.currentTimeMillis()).toString();
           String payload = new MeasurementRecord(
-            district,
             id, 
             System.currentTimeMillis(),
-            "type", 
+            "sensorId",
             (double)Math.random()*100000
-          ).toLine();
+          ).toJson();
           MqttMessage message = new MqttMessage(payload.getBytes());
           // Set the QoS on the Message
           message.setQos(pubQos);

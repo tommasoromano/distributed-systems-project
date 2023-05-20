@@ -2,8 +2,10 @@ package adminserver.REST.beans;
 
 import javax.xml.bind.annotation.XmlRootElement;
 
+import utils.IRobot;
+
 @XmlRootElement
-public class RobotBean {
+public class RobotBean implements IRobot {
     private int id;
     private String ipAddress;
     private int portNumber;

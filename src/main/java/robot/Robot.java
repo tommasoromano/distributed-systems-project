@@ -16,8 +16,8 @@ public class Robot {
 
   private Thread inputThread;
   private Thread sensorThread;
-  private Thread communicationThread;
-  private Thread networkThread;
+  // private Thread communicationThread;
+  // private Thread networkThread;
 
   private int cityId = -1;
   private int districtId = -1;
@@ -45,27 +45,23 @@ public class Robot {
   ////////////////////////////////////////////////////////////
 
   public void start() {
+
+    if (init) { return; }
+
     Thread inputThread = new Thread(this.input);
-    // Thread sensorThread = new Thread(this.sensor);
-    // Thread communicationThread = new Thread(this.communication);
-    // Thread networkThread = new Thread(this.network);
-
     this.inputThread = inputThread;
-    // this.sensorThread = sensorThread;
-    // this.communicationThread = communicationThread;
-    // this.networkThread = networkThread;
-
     inputThread.start();
-    // sensorThread.start();
-    // communicationThread.start();
-    // networkThread.start();
   
     // Shutdown hook
     Runtime.getRuntime().addShutdownHook(new Thread() {
         public void run() {
+          System.out.println("Shutdown hook running...");
             if (Robot.instance == null
               || Robot.getInstance().getId() == -1
-              || !Robot.getInstance().init) { return; }
+              || !Robot.getInstance().init) { 
+                System.out.println("Robot not initialized or destroied. Nothing to do.");
+                return; 
+              }
             System.out.println("Shutting down robot "+Robot.getInstance().getId()+"...");
             disconnect();
         }
@@ -84,6 +80,7 @@ public class Robot {
     this.setIpAddress(ipAddress);
     this.setPortNumber(portNumber);
 
+
     // join network and send messages to all robots
     try {
       InsertRobotBean insertRobotBean = this.communication.joinNetwork();
@@ -97,7 +94,22 @@ public class Robot {
       return;
     }
 
+    // start threads
+
+    Thread sensorThread = new Thread(this.sensor);
+    // Thread communicationThread = new Thread(this.communication);
+    // Thread networkThread = new Thread(this.network);
+
+    this.sensorThread = sensorThread;
+    // this.communicationThread = communicationThread;
+    // this.networkThread = networkThread;
+
+    sensorThread.start();
+    // communicationThread.start();
+    // networkThread.start();
+
     this.init = true;
+    System.out.println("Robot initialized.");
   }
 
   ////////////////////////////////////////////////////////////
@@ -150,11 +162,11 @@ public class Robot {
     System.out.println("Destroying robot "+this.id+".");
 
     this.inputThread.interrupt();
-    // this.sensorThread.interrupt();
+    this.sensorThread.interrupt();
     // this.communicationThread.interrupt();
     // this.networkThread.interrupt();
     this.inputThread = null;
-    // this.sensorThread = null;
+    this.sensorThread = null;
     // this.communicationThread = null;
     // this.networkThread = null;
 
@@ -226,5 +238,8 @@ public class Robot {
       return;
     }
     this.portNumber = portNumber;
+  }
+  public RobotCommunication getCommunication() {
+    return this.communication;
   }
 }

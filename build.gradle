@@ -2,6 +2,7 @@ plugins {
     id "com.google.protobuf" version "0.8.10" // for GRPC
     id "java"
     id "war" // for REST
+    // id 'application'
 }
 
 group 'org.example'
@@ -98,3 +99,19 @@ protobuf {
 test {
     useJUnitPlatform()
 }
+
+
+
+// // Define the main classes to be executed
+// def mainClasses = [
+//         'adminserver.StartAdminServer',
+//         'robot.StartRobot'
+// ]
+
+// // Create a separate 'run' task for each main class
+// mainClasses.each { className ->
+//     task "run${className.replaceAll('\\.', '')}(type: JavaExec)" {
+//         classpath = sourceSets.main.runtimeClasspath
+//         main = className
+//     }
+// }

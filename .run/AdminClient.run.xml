@@ -1,0 +1,13 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="AdminClient" type="Application" factoryName="Application" nameIsGenerated="true">
+    <option name="MAIN_CLASS_NAME" value="adminclient.AdminClient" />
+    <module name="testProgetto.main" />
+    <extension name="coverage">
+      <pattern>
+        <option name="PATTERN" value="adminclient.*" />
+        <option name="ENABLED" value="true" />
+      </pattern>
+    </extension>
+    <method v="2" />
+  </configuration>
+</component>

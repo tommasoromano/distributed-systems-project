@@ -3,7 +3,7 @@ package adminserver.statistics;
 import java.util.ArrayList;
 import java.util.List;
 
-import simulator.Measurement;
+import utils.MeasurementRecord;
 
 public class StatisticsDB {
 

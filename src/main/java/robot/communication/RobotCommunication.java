@@ -1,30 +1,26 @@
 package robot.communication;
 
-import java.util.List;
-
 import javax.ws.rs.core.Response;
 
 import adminserver.REST.RESTutils;
 import adminserver.REST.beans.InsertRobotBean;
+import utils.MeasurementRecord;
 
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 
-import com.sun.jersey.api.client.Client;
 import com.sun.jersey.api.client.ClientResponse;
-import com.sun.jersey.api.client.GenericType;
-import com.sun.jersey.api.client.WebResource;
-import com.sun.jersey.api.representation.Form;
 
-import adminclient.AdminClient;
 import robot.Robot;
 import utils.City;
 
 public class RobotCommunication {
 
   private MqttClient client;
+
+  private Thread grpcThread;
 
   public RobotCommunication() {
   }
@@ -64,9 +60,22 @@ public class RobotCommunication {
       return null;
     }
 
-    //! maybe split this is in anpther function
-
     // create mqtt
+    startMQTT();
+
+    // send message to all robots
+    this.grpcThread = new Thread(new GRPCServer());
+    this.grpcThread.start();
+
+    return insertRobotBean;
+
+  }
+
+  ////////////////////////////////////////////////////////////
+  // MQTT
+  ////////////////////////////////////////////////////////////
+
+  private void startMQTT() {
     String broker = "tcp://localhost:1883";
     String clientId = MqttClient.generateClientId();
     try {
@@ -75,39 +84,62 @@ public class RobotCommunication {
         connOpts.setCleanSession(true); // false = the broker stores all subscriptions for the client and all missed messages for the client that subscribed with a Qos level 1 or 2
 
         // Connect the client
-        System.out.println("Communication: " + clientId + " Connecting Broker " + broker);
+        System.out.println("MQTT: " + clientId + " Connecting Broker " + broker);
         client.connect(connOpts);
-        System.out.println("Communication: " + clientId + " Connected Broker " + broker);
+        System.out.println("MQTT: " + clientId + " Connected Broker " + broker);
 
     } catch (MqttException me ) {
-        System.out.println("reason " + me.getReasonCode());
-        System.out.println("msg " + me.getMessage());
-        System.out.println("loc " + me.getLocalizedMessage());
-        System.out.println("cause " + me.getCause());
-        System.out.println("excep " + me);
+      System.out.println("MQTT: Error:");
+        System.out.println("\treason " + me.getReasonCode());
+        System.out.println("\tmsg " + me.getMessage());
+        System.out.println("\tloc " + me.getLocalizedMessage());
+        System.out.println("\tcause " + me.getCause());
+        System.out.println("\texcep " + me);
         
-        robot.disconnect();
-        return null;
+        Robot.getInstance().disconnect();
     }
-
-    // send message to all robots
-
-    return insertRobotBean;
-
   }
 
-  public void sendMQTTMessage(String payload) {
+  public void sendAvgPollutionLevel(
+    long timestamp,
+    String sensorId,
+    double value
+    ) {
+      MeasurementRecord measurementRecord = new MeasurementRecord(
+        Robot.getInstance().getId(), 
+        timestamp,
+        sensorId,
+        value
+      );
+
+      String payload = measurementRecord.toJson();
+      sendMQTTMessage(payload);
+  }
+
+  private void sendMQTTMessage(String payload) {
     Robot robot = Robot.getInstance();
     try {
       String topic = City.getCityById(robot.getCityId()).getName().toLowerCase()
         +"/pollution/district"+robot.getDistrictId();
       MqttMessage message = new MqttMessage(payload.getBytes());
       message.setQos(2);
+      System.out.println("MQTT: Publishing message: "+message);
       client.publish(topic, message);
     } catch (MqttException e) {
-      System.out.println("Communication: Error: "+e.getMessage());
+      System.out.println("MQTT: Error: "+e.getMessage());
     }
   }
+
+
+  ////////////////////////////////////////////////////////////
+  // gRPC
+  ////////////////////////////////////////////////////////////
+
+
+
+  ////////////////////////////////////////////////////////////
+  // DISCONNECT
+  ////////////////////////////////////////////////////////////
 
   public void disconnect() {
 

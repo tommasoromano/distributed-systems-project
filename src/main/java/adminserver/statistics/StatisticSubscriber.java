@@ -11,9 +11,8 @@ import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 
 import adminserver.AdministratorServer;
-import io.opencensus.stats.Measure;
-import simulator.Measurement;
 import utils.City;
+import utils.MeasurementRecord;
 
 public class StatisticSubscriber implements Runnable {
 
@@ -59,11 +58,14 @@ public class StatisticSubscriber implements Runnable {
                         "\n\tTopic:   " + topic +
                         "\n\tMessage: " + receivedMessage +
                         "\n\tQoS:     " + message.getQos() + "\n");
-                
+                try {
                 AdministratorServer.getInstance().getStatistics()
                   .addMeasurement(
-                    MeasurementRecord.parseMeasurementRecord(receivedMessage)
+                    MeasurementRecord.fromJson(receivedMessage)
                   );
+                } catch (Exception e) {
+                  System.out.println("Error parsing JSON: " + e.getMessage());
+                }
             }
 
             public void connectionLost(Throwable cause) {
