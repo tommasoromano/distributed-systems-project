@@ -1,8 +1,9 @@
 package robot;
 
-import adminserver.REST.RESTutils;
 import adminserver.REST.beans.InsertRobotBean;
 import robot.communication.RobotCommunication;
+import robot.communication.RobotMaintenance;
+import robot.communication.RobotNetwork;
 import utils.City;
 import utils.Position;
 
@@ -13,11 +14,13 @@ public class Robot {
   private RobotSensor sensor;
   private RobotCommunication communication;
   private RobotNetwork network;
+  private RobotMaintenance maintenance;
 
   private Thread inputThread;
   private Thread sensorThread;
   // private Thread communicationThread;
   // private Thread networkThread;
+  private Thread maintenanceThread;
 
   private int cityId = -1;
   private int districtId = -1;
@@ -27,11 +30,13 @@ public class Robot {
   private Position position = null;
 
   private boolean init = false;
+  private boolean inMaintenance = false;
 
   private Robot() {
     this.input = new RobotInput();
     this.sensor = new RobotSensor();
     this.communication = new RobotCommunication();
+    this.maintenance = new RobotMaintenance();
   }
   public static Robot getInstance() {
     if (instance == null) {
@@ -99,17 +104,39 @@ public class Robot {
     Thread sensorThread = new Thread(this.sensor);
     // Thread communicationThread = new Thread(this.communication);
     // Thread networkThread = new Thread(this.network);
+    Thread maintenanThread = new Thread(this.maintenance);
 
     this.sensorThread = sensorThread;
     // this.communicationThread = communicationThread;
     // this.networkThread = networkThread;
+    this.maintenanceThread = maintenanThread;
 
     sensorThread.start();
     // communicationThread.start();
     // networkThread.start();
+    maintenanThread.start();
 
     this.init = true;
     System.out.println("Robot initialized.");
+  }
+
+  ////////////////////////////////////////////////////////////
+  // MISC
+  ////////////////////////////////////////////////////////////
+
+  public void startMaintenance() {
+    if (this.inMaintenance) { return; }
+    this.inMaintenance = true;
+
+    this.communication.startMaintenance();
+    this.sensor.startMaintenance();
+  }
+  public void endMaintenance() {
+    if (!this.inMaintenance) { return; }
+    this.inMaintenance = false;
+
+    this.communication.endMaintenance();
+    this.sensor.endMaintenance();
   }
 
   ////////////////////////////////////////////////////////////
@@ -165,10 +192,13 @@ public class Robot {
     this.sensorThread.interrupt();
     // this.communicationThread.interrupt();
     // this.networkThread.interrupt();
+    this.maintenanceThread.interrupt();
+    
     this.inputThread = null;
     this.sensorThread = null;
     // this.communicationThread = null;
     // this.networkThread = null;
+    this.maintenanceThread = null;
 
     this.cityId = -1;
     this.id = -1;
@@ -241,5 +271,8 @@ public class Robot {
   }
   public RobotCommunication getCommunication() {
     return this.communication;
+  }
+  public RobotNetwork getNetwork() {
+    return this.network;
   }
 }

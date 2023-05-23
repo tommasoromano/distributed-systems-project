@@ -26,8 +26,8 @@ public class ClientService {
     @Produces(MediaType.APPLICATION_JSON)
     public Response getRobots(@PathParam("cityId") int cityId) {
 
-      System.out.println("Received REST GET /{cityId}/robots"
-                        + "\n\tcityId:      "+cityId);
+      System.out.println("REST received GET /{cityId}/robots"
+                        + "\n\tcityId: "+cityId);
 
       // check if cityId is in the list of cities
       if (!City.isValidCityId(cityId)) {
@@ -45,10 +45,10 @@ public class ClientService {
                                             @PathParam("n") int n
       ) {
 
-      System.out.println("Received REST GET /{cityId}/pollution/avg_n/{id}/{n}"
-                        + "\n\tcityId:      "+cityId
-                        + "\n\tid:          "+id
-                        + "\n\tn:           "+n);
+      System.out.println("REST received GET /{cityId}/pollution/avg_n/{id}/{n}"
+                        + "\n\tcityId: "+cityId
+                        + "\tid: "+id
+                        + "\tn: "+n);
 
       // check if cityId is in the list of cities
       if (!City.isValidCityId(cityId)) {
@@ -74,10 +74,10 @@ public class ClientService {
                                                   @PathParam("t2") long t2
       ) {
 
-      System.out.println("Received REST GET /{cityId}/pollution/avg_t1_t2/{t1}/{t2}"
-                        + "\n\tcityId:      "+cityId
-                        + "\n\tt1:          "+t1
-                        + "\n\tt2:          "+t2);
+      System.out.println("REST received GET /{cityId}/pollution/avg_t1_t2/{t1}/{t2}"
+                        + "\n\tcityId: "+cityId
+                        + "\tt1: "+t1
+                        + "\tt2: "+t2);
 
       // check if cityId is in the list of cities
       if (!City.isValidCityId(cityId)) {
@@ -94,8 +94,8 @@ public class ClientService {
     @Produces(MediaType.APPLICATION_JSON)
     public Response getCityRepresentation(@PathParam("cityId") int cityId) {
 
-      System.out.println("Received REST GET /{cityId}/city"
-                        + "\n\tcityId:      "+cityId);
+      System.out.println("REST received GET /{cityId}/city"
+                        + "\n\tcityId: "+cityId);
 
       // check if cityId is in the list of cities
       if (!City.isValidCityId(cityId)) {
@@ -110,8 +110,8 @@ public class ClientService {
     @Produces(MediaType.APPLICATION_JSON)
     public Response getMeasurementDB(@PathParam("cityId") int cityId) {
 
-      System.out.println("Received REST GET /{cityId}/pollution/db"
-                        + "\n\tcityId:      "+cityId);
+      System.out.println("REST received GET /{cityId}/pollution/db"
+                        + "\n\tcityId: "+cityId);
 
       // check if cityId is in the list of cities
       if (!City.isValidCityId(cityId)) {

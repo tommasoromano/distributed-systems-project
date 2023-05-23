@@ -42,9 +42,9 @@ public class StatisticSubscriber implements Runnable {
         connOpts.setCleanSession(true); // false = the broker stores all subscriptions for the client and all missed messages for the client that subscribed with a Qos level 1 or 2
 
         // Connect the client
-        System.out.println(clientId + " Connecting Broker " + broker);
+        System.out.println("MQTT Subscriber: " + clientId + " Connecting Broker " + broker);
         client.connect(connOpts);
-        System.out.println(clientId + " Connected " + Thread.currentThread().getId());
+        System.out.println("MQTT Subscriber: " + clientId + " Connected " + Thread.currentThread().getId());
 
         // Callback
         client.setCallback(new MqttCallback() {
@@ -53,36 +53,36 @@ public class StatisticSubscriber implements Runnable {
                 // Called when a message arrives from the server that matches any subscription made by the client
                 String time = new Timestamp(System.currentTimeMillis()).toString();
                 String receivedMessage = new String(message.getPayload());
-                System.out.println(clientId +" Received a Message! - Callback - Thread PID: " + Thread.currentThread().getId() +
-                        "\n\tTime:    " + time +
-                        "\n\tTopic:   " + topic +
-                        "\n\tMessage: " + receivedMessage +
-                        "\n\tQoS:     " + message.getQos() + "\n");
+                System.out.println("MQTT Subscriber: " + clientId +" Received a Message! - Callback - Thread PID: " + Thread.currentThread().getId() +
+                        "\n\tTime: " + time +
+                        "\tTopic: " + topic +
+                        "\tMessage: " + receivedMessage +
+                        "\tQoS:     " + message.getQos());
                 try {
                 AdministratorServer.getInstance().getStatistics()
                   .addMeasurement(
                     MeasurementRecord.fromJson(receivedMessage)
                   );
                 } catch (Exception e) {
-                  System.out.println("Error parsing JSON: " + e.getMessage());
+                  System.out.println("MQTT Subscriber:  Error parsing JSON: " + e.getMessage());
                 }
             }
 
             public void connectionLost(Throwable cause) {
-                System.out.println(clientId + " Connectionlost! cause:" + cause.getMessage()+ "-  Thread PID: " + Thread.currentThread().getId());
+                System.out.println("MQTT Subscriber: " + clientId + " Connectionlost! cause:" + cause.getMessage()+ "-  Thread PID: " + Thread.currentThread().getId());
             }
 
             public void deliveryComplete(IMqttDeliveryToken token) {
                 if (token.isComplete()) {
-                    System.out.println(clientId + " Message delivered - Thread PID: " + Thread.currentThread().getId());
+                    System.out.println("MQTT Subscriber: " + clientId + " Message delivered - Thread PID: " + Thread.currentThread().getId());
                 }
             }
 
         });
 
-        System.out.println(clientId + " Subscribing ... - Thread PID: " + Thread.currentThread().getId());
+        System.out.println("MQTT Subscriber: " + clientId + " Subscribing ... - Thread PID: " + Thread.currentThread().getId());
         client.subscribe(subTopicArray,subQosArray);
-        System.out.println(clientId + " Subscribed to topics : " + Arrays.toString(subTopicArray));
+        System.out.println("MQTT Subscriber: " + clientId + " Subscribed to topics : " + Arrays.toString(subTopicArray));
 
     } catch (MqttException me ) {
         System.out.println("reason " + me.getReasonCode());

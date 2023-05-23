@@ -63,7 +63,7 @@ public class RobotCommunication {
     // create mqtt
     startMQTT();
 
-    // send message to all robots
+    // start grpc
     this.grpcThread = new Thread(new GRPCServer());
     this.grpcThread.start();
 
@@ -100,19 +100,9 @@ public class RobotCommunication {
     }
   }
 
-  public void sendAvgPollutionLevel(
-    long timestamp,
-    String sensorId,
-    double value
+  public void sendPollutionLevel(
+    String payload
     ) {
-      MeasurementRecord measurementRecord = new MeasurementRecord(
-        Robot.getInstance().getId(), 
-        timestamp,
-        sensorId,
-        value
-      );
-
-      String payload = measurementRecord.toJson();
       sendMQTTMessage(payload);
   }
 
@@ -135,7 +125,13 @@ public class RobotCommunication {
   // gRPC
   ////////////////////////////////////////////////////////////
 
+  ////////////////////////////////////////////////////////////
+  // MAINTENENCE
+  ////////////////////////////////////////////////////////////
 
+  public void startMaintenance() {
+    // TODO
+  }
 
   ////////////////////////////////////////////////////////////
   // DISCONNECT
@@ -155,7 +151,7 @@ public class RobotCommunication {
           + "\n\tError code: " + response.getStatus());
     }
 
-    // send messages to the other robots
+    //! send messages to the other robots
 
     System.out.println("Communication: Robot "+robot.getId()+" left the network.");
 

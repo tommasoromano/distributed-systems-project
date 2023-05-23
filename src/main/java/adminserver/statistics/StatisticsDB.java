@@ -78,7 +78,12 @@ public class StatisticsDB {
   private double calculateAvgOfMeasurements(List<MeasurementRecord> measurements) {
     double sum = 0;
     for (MeasurementRecord measurement : measurements) {
-      sum += measurement.getValue();
+      double avg = 0;
+      for (Double val : measurement.getAverages()) {
+        avg += val;
+      }
+      avg /= measurement.getAverages().size();
+      sum += avg;
     }
     return sum / measurements.size();
   }

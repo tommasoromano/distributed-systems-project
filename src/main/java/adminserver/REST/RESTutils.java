@@ -29,19 +29,19 @@ public class RESTutils {
     
     WebResource resource = createResource(url);
 
-    System.out.println("Making REST POST Request: "
+    System.out.println("REST making POST Request: "
       +"\n\tResource: " + resource.getURI()
-      +"\n\tForm:     " + form);
+      +"\tForm: " + form);
     
     ClientResponse response = resource
     .type(MediaType.APPLICATION_FORM_URLENCODED)
     .accept(MediaType.APPLICATION_JSON)
     .post(ClientResponse.class, form);
 
-    System.out.println("Receiveing Response REST POST: "
+    System.out.println("REST receiving response POST: "
       +"\n\tResource: " + resource.getURI()
-      +"\n\tForm:     " + form
-      +"\n\tResponse: " + response);
+      +"\tForm: " + form
+      +"\tResponse: " + response);
 
     return response;
   }
@@ -50,7 +50,7 @@ public class RESTutils {
     
     WebResource resource = createResource(url);
 
-    System.out.println("Making REST GET Request: "
+    System.out.println("REST making GET Request: "
       +"\n\tResource: " + resource.getURI());
     
     ClientResponse response = resource
@@ -58,9 +58,9 @@ public class RESTutils {
     .accept(MediaType.APPLICATION_JSON)
     .get(ClientResponse.class);
 
-    System.out.println("Receiveing Response REST GET: "
+    System.out.println("REST receiving response GET: "
       +"\n\tResource: " + resource.getURI()
-      +"\n\tResponse: " + response);
+      +"\tResponse: " + response);
 
     return response;
   }
@@ -69,7 +69,7 @@ public class RESTutils {
     
     WebResource resource = createResource(url);
 
-    System.out.println("Making REST DELETE Request: "
+    System.out.println("REST making DELETE Request: "
       +"\n\tResource: " + resource.getURI());
     
     ClientResponse response = resource
@@ -77,9 +77,9 @@ public class RESTutils {
     .accept(MediaType.APPLICATION_JSON)
     .delete(ClientResponse.class);
 
-    System.out.println("Receiveing Response REST DELETE: "
+    System.out.println("REST receiving response DELETE: "
       +"\n\tResource: " + resource.getURI()
-      +"\n\tResponse: " + response);
+      +"\tResponse: " + response);
 
     return response;
   }

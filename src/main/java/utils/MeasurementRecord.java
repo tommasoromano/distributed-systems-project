@@ -1,48 +1,42 @@
 package utils;
 
+import java.util.List;
+
+import com.google.gson.Gson;
+
 public class MeasurementRecord {
   private int robotId;
   private long timestamp;
-  private String sensorId;
-  private double value;
-  public MeasurementRecord(int robotId, long timestamp, String sensorId, double value) {
+  private List<Double> averages;
+
+  public MeasurementRecord(int robotId, long timestamp, List<Double> averages) {
     this.robotId = robotId;
     this.timestamp = timestamp;
-    this.sensorId = sensorId;
-    this.value = value;
+    this.averages = averages;
   }
-  public String toJson() {
-    return robotId + "\t" + timestamp + "\t" + sensorId + "\t" + value;
+  public static String toJson(MeasurementRecord obj) {
+    Gson gson = new Gson();
+    return gson.toJson(obj);
   }
-  public static MeasurementRecord fromJson(String line) {
-    String[] tokens = line.split("\t");
-    if (tokens.length != 4) {
-      throw new IllegalArgumentException("Invalid line: " + line);
-    }
-    int robotId = Integer.parseInt(tokens[0]);
-    long timestamp = Long.parseLong(tokens[1]);
-    String sensorId = tokens[2];
-    double value = Double.parseDouble(tokens[3]);
-    return new MeasurementRecord(robotId, timestamp, sensorId, value);
-  }
+  public static MeasurementRecord fromJson(String json) {
+    Gson gson = new Gson();
+    return gson.fromJson(json, MeasurementRecord.class);
+}
+
   public int getRobotId() {
     return robotId;
   }
   public long getTimestamp() {
     return timestamp;
   }
-  public String getSensorId() {
-    return sensorId;
-  }
-  public double getValue() {
-    return value;
+  public List<Double> getAverages() {
+    return averages;
   }
   @Override
   public String toString() {
     return "StatisticsRecord:"
       + "\trobotId=" + robotId
       + "\ttimestamp=" + timestamp
-      + "\tsensorId=" + sensorId
-      + "\tvalue=" + value;
+      + "\taverages=" + averages;
   }
 }

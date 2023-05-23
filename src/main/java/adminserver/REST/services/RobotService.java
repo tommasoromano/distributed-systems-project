@@ -30,11 +30,11 @@ public class RobotService {
                                 @FormParam("portNumber") int portNumber
       ) {
 
-      System.out.println("Received REST POST /{cityId}/insert"
-                        + "\n\tcityId:      "+cityId
-                        + "\n\tid:          "+id
-                        + "\n\tipAddress:   "+ipAddress
-                        + "\n\tportNumber:  "+portNumber);
+      System.out.println("REST received POST /{cityId}/insert"
+                        + "\n\tcityId: "+cityId
+                        + "\tid: "+id
+                        + "\tipAddress: "+ipAddress
+                        + "\tportNumber: "+portNumber);
         
       // check if cityId is in the list of cities
       if (!City.isValidCityId(cityId)) {
@@ -59,9 +59,9 @@ public class RobotService {
                                 @PathParam("id") int id
       ) {
 
-      System.out.println("Received REST DELETE /{cityId}/remove/{id}"
-                        + "\n\tcityId:      "+cityId
-                        + "\n\tid:          "+id);
+      System.out.println("REST received DELETE /{cityId}/remove/{id}"
+                        + "\n\tcityId: "+cityId
+                        + "\tid: "+id);
 
       // check if cityId is in the list of cities
       if (!City.isValidCityId(cityId)) {

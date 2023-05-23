@@ -1,5 +1,8 @@
 package testers;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
 import org.eclipse.paho.client.mqttv3.MqttException;
@@ -35,14 +38,16 @@ public class StatsTester {
         for (int i = 0; i < 100; i++) {
           int district = ((int)Math.floor(Math.random() * (3 - 1 + 1) + 1));
           int id = ((int)Math.floor(Math.random() * (10 - 1 + 1) + 1));
-          // String payload = new Measurement(id, "type", Math.random()*100000, System.currentTimeMillis()).toString();
-          String payload = new MeasurementRecord(
+          List<Double> avgs = new ArrayList<Double>();
+          avgs.add((double)Math.random()*100000);
+          avgs.add((double)Math.random()*100000);
+          avgs.add((double)Math.random()*100000);
+          byte[] payload = MeasurementRecord.toJson(new MeasurementRecord(
             id, 
             System.currentTimeMillis(),
-            "sensorId",
-            (double)Math.random()*100000
-          ).toJson();
-          MqttMessage message = new MqttMessage(payload.getBytes());
+            avgs
+          )).getBytes();
+          MqttMessage message = new MqttMessage(payload);
           // Set the QoS on the Message
           message.setQos(pubQos);
           System.out.println(clientId + " Publishing message: " + payload + " ...");
