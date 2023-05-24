@@ -54,7 +54,6 @@ public class BufferMeasurement implements Buffer {
     if (!this.stopPrintMsg) {
       System.out.println("Buffer: Added measurement: " + toAdd + ", buffer size: " + this.measurements.size());
     }
-    //! compute sliding window
     if (this.measurements.size() == this.windowSize) {
       // compute average
       double avg = 0.0;

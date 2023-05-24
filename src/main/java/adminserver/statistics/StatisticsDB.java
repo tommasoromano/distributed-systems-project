@@ -1,13 +1,18 @@
 package adminserver.statistics;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
+import utils.Config;
 import utils.MeasurementRecord;
 
 public class StatisticsDB {
 
   private List<MeasurementRecord> measurements;
+  
+  private Map<Integer,Integer> sensorCounter = new HashMap<Integer,Integer>();
 
   private StatisticsDB() {
     this.measurements = new ArrayList<MeasurementRecord>();
@@ -24,7 +29,12 @@ public class StatisticsDB {
     // this.measurements.add(new MeasurementRecord(districtId, measurement.getRobotId(), measurement));
     this.measurements.add(measurement);
 
-    System.out.println("StatisticsDB: added measurement: " + measurement.toString());
+    // print every n-th sensor measurement
+    if (!this.sensorCounter.containsKey(measurement.getRobotId()) || this.sensorCounter.get(measurement.getRobotId()) % Config.PRINT_SENSOR_EVERY == 0) {
+      this.sensorCounter.put(measurement.getRobotId(), 0);
+      System.out.println("StatisticsDB: added measurement: " + measurement.toString());
+    }
+    this.sensorCounter.put(measurement.getRobotId(), this.sensorCounter.get(measurement.getRobotId()) + 1);
   }
   public List<MeasurementRecord> getAllMeasurements() {
     return this.measurements;

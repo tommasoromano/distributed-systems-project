@@ -72,7 +72,7 @@ public class RobotSensor implements Runnable {
 
     MeasurementRecord pm10Measurements = pm10Buffer.createMeasurementRecord();
 
-    System.out.println("RobotSensor: read " + pm10Measurements.getAverages().size() + " measurements.");
+    // System.out.println("RobotSensor: read " + pm10Measurements.getAverages().size() + " measurements.");
     
     Robot.getInstance().getCommunication().sendPollutionLevel(
       new String(MeasurementRecord.toJson(pm10Measurements))
@@ -81,6 +81,10 @@ public class RobotSensor implements Runnable {
 
   public void startMaintenance() {
     this.pm10Thread.interrupt();
+    // TODO
+  }
+
+  public void endMaintenance() {
     // TODO
   }
 

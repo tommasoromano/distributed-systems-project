@@ -11,14 +11,13 @@ public class GRPCServer implements Runnable {
 
     try {
       Server server = ServerBuilder.forPort(Robot.getInstance().getPortNumber())
-                      // .addService(new SimpleSum())
-                      // .addService(new RepeatedSum())
-                      // .addService(new StreamSum())
+                      .addService(new GRPCServiceImpl())
                       .build();
 
       server.start();
 
       System.out.println("gRPC: running on port "+Robot.getInstance().getPortNumber()+"...");
+      Robot.getInstance().getCommunication().setConnectedToGRPC(true);
 
       server.awaitTermination();
     } catch (Exception e) {

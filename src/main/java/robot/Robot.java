@@ -72,6 +72,7 @@ public class Robot {
         }
     });
   }
+
   public void init(int id, String ipAddress, int portNumber) {
 
     if (init) { return; }
@@ -86,7 +87,7 @@ public class Robot {
     this.setPortNumber(portNumber);
 
 
-    // join network and send messages to all robots
+    // join network
     try {
       InsertRobotBean insertRobotBean = this.communication.joinNetwork();
       Position pos = new Position(insertRobotBean.getX(), insertRobotBean.getY());
@@ -94,8 +95,10 @@ public class Robot {
           .getDistrictByPosition(pos).getId());
       this.network = new RobotNetwork(pos, insertRobotBean.getRobots());
     } catch (Exception e) {
-      System.out.println("Robot "+this.id+" failed to join the network.");
-      this.destroy();
+      System.out.println("Robot "+this.id+" failed to join the network."
+          + "\n\tError: " + e.getMessage());
+      e.printStackTrace();
+      this.disconnect();
       return;
     }
 
@@ -164,15 +167,15 @@ public class Robot {
   public void disconnect() {
 
     if (Robot.instance == null
-    || this.id == -1
-    || !this.init) { return; }
+    || this.id == -1) { return; }
 
     System.out.println("Robot "+this.id+" is disconnecting from the network.");
 
     try {
       this.communication.disconnect();
     } catch (Exception e) {
-      System.out.println("Robot "+this.id+" failed to disconnect from the network.");
+      System.out.println("Robot "+this.id+" failed to disconnect from the network."
+        +"\n\t"+e.getMessage());
     }
 
     this.destroy();
@@ -268,6 +271,9 @@ public class Robot {
       return;
     }
     this.portNumber = portNumber;
+  }
+  public boolean isInMaintenance() {
+    return this.inMaintenance;
   }
   public RobotCommunication getCommunication() {
     return this.communication;

@@ -29,6 +29,7 @@ public class RobotMaintenance implements Runnable {
 
   private long malfunctionLoop = 10;
   private float changeOfMalfunction = 0.1f;
+
   public RobotMaintenance() {}
 
   @Override
@@ -51,7 +52,7 @@ public class RobotMaintenance implements Runnable {
     if (Math.random() < changeOfMalfunction) {
       System.out.println("Malfunction: "+ Robot.getInstance().getId()+" is going to maintenance");
       // ask for permission to coordinator to go to maintenance
-      Robot.getInstance().getNetwork().goToMaintenance();
+      Robot.getInstance().getNetwork().askForMaintenance();
       try {
         Robot.getInstance().startMaintenance();
         Thread.sleep(10*1000);
@@ -60,7 +61,7 @@ public class RobotMaintenance implements Runnable {
       }
       // release permission to coordinator to go to maintenance
       Robot.getInstance().endMaintenance();
-      Robot.getInstance().getNetwork().finishMaintenance();
+      Robot.getInstance().getNetwork().hasFinishedMaintenance();
     }
   }
 

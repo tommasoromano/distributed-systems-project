@@ -112,7 +112,7 @@ public class RESTutils {
     Form form = new Form();
     form.add("id", id + "");
     form.add("ipAddress", "localhost");
-    form.add("portNumber", ((int)Math.floor(Math.random() * (9999 - 1000 + 1) + 1000)) + "");
+    form.add("portNumber", portNumber + "");
 
     return RESTPost(getRobotsURI(cityId)+"insert", form);
   }

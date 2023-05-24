@@ -1,8 +1,14 @@
 package robot.communication;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import adminserver.REST.beans.RobotBean;
+import protos.network.Network;
+import protos.network.NetworkMessage;
+import protos.network.NetworkResponse;
+import protos.network.NetworkResult;
 import robot.Robot;
 import utils.Position;
 
@@ -33,12 +39,34 @@ public class RobotNetwork {
   private List<RobotBean> robots;
   private RobotBean thisRobot;
   private RobotBean coordinator;
+  private boolean isElectionStarted = false;
+  private MaintenanceQueue maintenanceQueue;
 
-  private boolean inMaintenance = false;
+  enum MessageTypes {
+    WELCOME,
+    WELCOME_RESPONSE,
+    LEAVING,
+    LEAVING_RESPONSE,
+
+    ASK_FOR_MAINTENANCE,
+    MAINTENANCE_GRANTED,
+    MAINTENANCE_NOT_GRANTED,
+    MAINTENENCE_FINISHED,
+    MAINTENENCE_FINISHED_RESPONSE,
+
+    ASK_FOR_ELECTION,
+    ELECTION_OK,
+    ELECTION_NOT_OK,
+    COORDINATOR,
+    COORDINATOR_RESPONSE,
+
+    ERROR
+  }
 
   public RobotNetwork(Position position, List<RobotBean> startRobots) {
     this.position = position;
-    this.robots = robots;
+    this.robots = new ArrayList<>(startRobots);
+    this.maintenanceQueue = new MaintenanceQueue();
 
     this.thisRobot = new RobotBean(
       Robot.getInstance().getId(),
@@ -55,23 +83,362 @@ public class RobotNetwork {
     this.welcomeAll();
   }
 
+  ////////////////////////////////////////////////////////////
+  // SENDING
+  ////////////////////////////////////////////////////////////
+
   private void welcomeAll() {
-    // send <entered, robotBean, timestamp> to all robots
+    System.out.println("Network: welcoming all robots.");
+    for (RobotBean robot : this.robots) {
+      NetworkResponse response = Robot.getInstance().getCommunication()
+        .sendMessageToRobot(
+          buildNetworkMessage(MessageTypes.WELCOME, null),
+          robot.getPortNumber()
+        );
+      
+      if (response == null) {
+        handleNoResponse(robot.getId(), false);
+      }
+    }
+    // System.out.println("Network: Robot "+thisRobot.getId()+" welcomed all robots.");
   }
 
-  public void goToMaintenance() {
-    // send <maintenance, robotBean, timestamp> to coordinator
-
-    // if no response, start election
+  public void leaveNetwork() {
+    System.out.println("Network: sending leave message to all robots.");
+    for (RobotBean robot : this.robots) {
+      Robot.getInstance().getCommunication()
+        .sendMessageToRobot(
+          buildNetworkMessage(MessageTypes.LEAVING, null), 
+          robot.getPortNumber()
+      );
+    }
+    //! if I am coordinator, should I propagate the maintenence queue?
   }
 
-  public void finishMaintenance() {
-    // send <finished, robotBean, timestamp> to all robots
+  public void askForMaintenance() {
+
+    NetworkResponse response = Robot.getInstance().getCommunication()
+      .sendMessageToRobot(
+        buildNetworkMessage(MessageTypes.ASK_FOR_MAINTENANCE, null), 
+        this.coordinator.getPortNumber()
+      );
+
+    // System.out.println("Network: asked for maintenance to "+this.coordinator.getId()
+    //     +"\n\tresponse "+response);
+    
+    if (response == null) {
+      handleNoResponse(this.coordinator.getId(), true);
+      return;
+    }
+
+    MessageTypes responseType = MessageTypes.valueOf(response.getMessageType());
+
+    switch(responseType) {
+      case MAINTENANCE_GRANTED:
+        System.out.println("Network: maintenance granted by "+this.coordinator.getId());
+        //! call this robot to start maintenence
+        break;
+      case MAINTENANCE_NOT_GRANTED:
+        System.out.println("Network: maintenance not granted by "+this.coordinator.getId());
+        //! have to wait?
+        break;
+      default:
+        System.out.println("Network: received unexpected response from "+this.coordinator.getId());
+        break;
+    }
+
   }
 
-  private void startElection() {
-    // send <election, robotBean, timestamp> to all robots with id > this.id
+  public void hasFinishedMaintenance() {
 
-    // if no response, send <coordinator, robotBean, timestamp> to all robots with id < this.id
+    NetworkResponse response = Robot.getInstance().getCommunication()
+      .sendMessageToRobot(
+        buildNetworkMessage(MessageTypes.MAINTENENCE_FINISHED, null), 
+        this.coordinator.getPortNumber()
+    );
+
+    if (response == null) {
+      handleNoResponse(this.coordinator.getId(), true);
+      return;
+    }
+
   }
+
+  private void handleNoResponse(int robotId, boolean startElection) {
+    if (robotId == this.coordinator.getId() && startElection) {
+      System.out.println("Network: coordinator did not respond, starting election.");
+      this.askToStartElection();
+    } else {
+      System.out.println("Network: robot "+robotId+" did not respond, removing from network.");
+      this.robots.removeIf((robot) -> robot.getId() == robotId);
+    }
+  }
+
+  private void askToStartElection() {
+
+    if (isElectionStarted) {
+      System.out.println("Network: election already started (asking).");
+      return;
+    }
+    isElectionStarted = true;
+
+    System.out.println("Network: Robot "+thisRobot.getId()+" asking to start election.");
+
+    this.coordinator = thisRobot;
+    for (RobotBean robot : this.robots) {
+      if (robot.getId() > this.thisRobot.getId()) {
+        NetworkResponse response = Robot.getInstance().getCommunication()
+          .sendMessageToRobot(
+            buildNetworkMessage(MessageTypes.ASK_FOR_ELECTION, null), 
+            robot.getPortNumber()
+          );
+        if (response == null) {
+          handleNoResponse(robot.getId(), false);
+          continue;
+        }
+        MessageTypes responseType = MessageTypes.valueOf(response.getMessageType());
+        switch(responseType) {
+          case ELECTION_OK:
+            this.coordinator = null;
+            System.out.println("Network: Robot "+robot.getId()+" accepted election, means I am not coordinator.");
+            break;
+          case ELECTION_NOT_OK:
+            System.out.println("Network: Robot "+robot.getId()+" did not accept election.");
+            break;
+          default:
+            System.out.println("Network: Robot "+robot.getId()+" sent unexpected response.");
+            break;
+        }
+      }
+    }
+
+    if (this.coordinator != null && this.coordinator.getId() == thisRobot.getId()) {
+      System.out.println("Network: I am the new coordinator.");
+      for (RobotBean robot : this.robots) {
+        NetworkResponse response = Robot.getInstance().getCommunication()
+          .sendMessageToRobot(
+            buildNetworkMessage(MessageTypes.COORDINATOR, null), 
+            robot.getPortNumber()
+          );
+        if (response == null) {
+          handleNoResponse(robot.getId(), false);
+          continue;
+        }
+      }
+      this.isElectionStarted = false;
+    }
+  }
+
+
+  private NetworkMessage buildNetworkMessage(
+    MessageTypes messageType,
+    String additionalPayload
+    ) {
+    return NetworkMessage.newBuilder()
+      .setMessageType(messageType.toString())
+      .setSenderId(thisRobot.getId())
+      .setSenderPort(thisRobot.getPortNumber())
+      .setTimestamp(System.currentTimeMillis())
+      .setAdditionalPayload(additionalPayload)
+      .build();
+  }
+
+  ////////////////////////////////////////////////////////////
+  // RECEIVING
+  ////////////////////////////////////////////////////////////
+
+  public NetworkResponse createResponseForRobotMessage(NetworkMessage message) {
+
+    MessageTypes type = MessageTypes.valueOf(message.getMessageType());
+    int senderId = message.getSenderId();
+    int senderPort = message.getSenderPort();
+    long ts = message.getTimestamp();
+    String additionalPayload = message.getAdditionalPayload();
+
+    System.out.println("Network: received message from robot "+senderId+" with ts: "+ts
+      +"\n\tmessage: "+message);
+
+    //! make a msg queue with synchronized method?
+
+    switch(type) {
+      case WELCOME:
+        return this.welcomeNewRobot(senderId, senderPort);
+      case LEAVING:
+        return this.robotLeftNetwork(senderId, senderPort);
+      case ASK_FOR_MAINTENANCE:
+        return this.robotAskedForMaintenence(senderId, senderPort);
+      case MAINTENANCE_GRANTED:
+        //! before there were robots but 
+        //! coordinator said that now the queue is empty
+        break;
+      case MAINTENENCE_FINISHED:
+        return this.robotFinishedMaintenence(senderId, senderPort);
+      case ASK_FOR_ELECTION:
+        return this.robotAskedToStartElection(senderId, senderPort);
+      case COORDINATOR:
+        return this.robotIsCoordinator(senderId, senderPort);
+      default:
+        System.out.println("Network: received unknown message type: "+type);
+    }
+
+    return builNetworkResponse(MessageTypes.ERROR, null);
+  }
+
+  private NetworkResponse welcomeNewRobot(int senderId, int senderPort) {
+    RobotBean newRobot = new RobotBean(senderId, "localhost", senderPort);
+    // add robot to list
+    this.robots.add(newRobot);
+    System.out.println("Network: Robot "+senderId+" welcomed and added to network.");
+
+    // check if new robot is coordinator
+    if (senderId > this.coordinator.getId()) {
+      this.coordinator = newRobot;
+      System.out.println("Network: Robot "+senderId+" is new coordinator.");
+    }
+
+    return builNetworkResponse(MessageTypes.WELCOME_RESPONSE, null);
+  }
+
+  private NetworkResponse robotLeftNetwork(int senderId, int senderPort) {
+
+    // remove robot from list
+    this.robots.removeIf((robot) -> robot.getId() == senderId);
+    System.out.println("Network: Robot "+senderId+" removed from network.");
+
+    // check if coordinator left
+    if (senderId == this.coordinator.getId()) {
+      this.coordinator = this.robots.stream()
+        .max(Comparator.comparing(RobotBean::getId))
+        .orElse(this.thisRobot);
+      System.out.println("Network: Robot "+senderId+" was coordinator, new coordinator is "+this.coordinator.getId());
+      //! start election ?
+    }
+
+    return builNetworkResponse(MessageTypes.LEAVING_RESPONSE, null);
+  }
+
+  private NetworkResponse robotAskedForMaintenence(int senderId, int senderPort) {
+    
+    if (this.coordinator.getId() != this.thisRobot.getId()) {
+      //! add different message? should i inform my coordinator?
+      System.out.println("Network: Robot "+senderId+" asked for maintenance, but I'm not the coordinator.");
+      return builNetworkResponse(MessageTypes.MAINTENANCE_NOT_GRANTED, null);
+    }
+
+    RobotBean robot = this.robots.stream()
+      .filter((r) -> r.getId() == senderId)
+      .findFirst()
+      .orElse(null);
+    
+    if (robot == null) {
+      //! should I add the robot in the network?
+      System.out.println("Network: Robot "+senderId+" asked for maintenance, but it's not in the network.");
+      return builNetworkResponse(MessageTypes.MAINTENANCE_NOT_GRANTED, null);
+    }
+
+    if (this.maintenanceQueue.contains(senderId)) {
+      //! maybe add different response messages?
+      System.out.println("Network: Robot "+senderId+" asked for maintenance, but it's already in the queue.");
+      return builNetworkResponse(MessageTypes.MAINTENANCE_NOT_GRANTED, null);
+    }
+
+    if (this.maintenanceQueue.isEmpty()) {
+      System.out.println("Network: Robot "+senderId+" asked for maintenance, granting.");
+      this.maintenanceQueue.add(robot);
+      return builNetworkResponse(MessageTypes.MAINTENANCE_GRANTED, null);
+    } 
+
+    this.maintenanceQueue.add(robot);
+    System.out.println("Network: Robot "+senderId+" asked for maintenance, but there are other robots in the queue.");
+    return builNetworkResponse(MessageTypes.MAINTENANCE_NOT_GRANTED, null);
+
+  }
+
+  private NetworkResponse robotFinishedMaintenence(int senderId, int senderPort) {
+    
+    if (this.coordinator.getId() != this.thisRobot.getId()) {
+      //! add different message? should i inform my coordinator?
+      System.out.println("Network: Robot "+senderId+" finished maintenance, but I'm not the coordinator.");
+      return builNetworkResponse(MessageTypes.MAINTENENCE_FINISHED_RESPONSE, null);
+    }
+
+    RobotBean robot = this.robots.stream()
+      .filter((r) -> r.getId() == senderId)
+      .findFirst()
+      .orElse(null);
+
+    if (robot == null) {
+      //! should I add the robot in the network?
+      System.out.println("Network: Robot "+senderId+" finished maintenance, but it's not in the network.");
+      return builNetworkResponse(MessageTypes.MAINTENENCE_FINISHED_RESPONSE, null);
+    }
+
+    if (this.maintenanceQueue.isEmpty()) {
+      //! maybe add different response messages?
+      System.out.println("Network: Robot "+senderId+" finished maintenance, but there are no robots in the queue.");
+      return builNetworkResponse(MessageTypes.MAINTENENCE_FINISHED_RESPONSE, null);
+    }
+
+    this.maintenanceQueue.remove(senderPort);
+    System.out.println("Network: Robot "+senderId+" finished maintenance, removing from queue.");
+
+    RobotBean nextRobot = this.maintenanceQueue.peek();
+    if (nextRobot != null) {
+      //! should I send a message to the coordinator of the next robot?
+    }
+
+    return builNetworkResponse(MessageTypes.MAINTENENCE_FINISHED_RESPONSE, null);
+
+  }
+
+  private NetworkResponse robotAskedToStartElection(int senderId, int senderPort) {
+
+    MessageTypes responseType = senderId < thisRobot.getId() ? MessageTypes.ELECTION_OK : MessageTypes.ELECTION_NOT_OK;
+    
+    if (this.isElectionStarted) {
+      System.out.println("Network: election already started (receiving).");
+      return builNetworkResponse(responseType, null);
+    }
+
+    // propagate election
+    System.out.println("Network: propagate election.");
+    this.askToStartElection();
+
+    return builNetworkResponse(responseType, null);
+  }
+
+  private NetworkResponse robotIsCoordinator(int senderId, int senderPort) {
+
+    this.isElectionStarted = false;
+    
+    // set new coordinator
+    this.coordinator = this.robots.stream()
+      .filter((r) -> r.getId() == senderId)
+      .findFirst()
+      .orElse(null);
+    
+    if (this.coordinator == null) {
+      System.out.println("Network: Robot "+senderId+" is new coordinator, but it's not in the network.");
+      //! must fix this
+      return builNetworkResponse(MessageTypes.COORDINATOR_RESPONSE, null);
+    }
+
+    System.out.println("Network: Robot "+senderId+" is new coordinator.");
+    return builNetworkResponse(MessageTypes.COORDINATOR_RESPONSE, null);
+
+  }
+
+  private NetworkResponse builNetworkResponse(
+    MessageTypes messageType,
+    String additionalPayload
+    ) {
+    return NetworkResponse.newBuilder()
+      .setMessageType(messageType.toString())
+      .setSenderId(thisRobot.getId())
+      .setSenderPort(thisRobot.getPortNumber())
+      .setTimestamp(System.currentTimeMillis())
+      .setAdditionalPayload(additionalPayload)
+      .build();
+  }
+
 }

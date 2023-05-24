@@ -2,7 +2,7 @@ plugins {
     id "com.google.protobuf" version "0.8.10" // for GRPC
     id "java"
     id "war" // for REST
-    // id 'application'
+    id 'application'
 }
 
 group 'org.example'
@@ -66,6 +66,9 @@ sourceSets {
             srcDirs 'build/generated/source/proto/main/grpc'
             srcDirs 'build/generated/source/proto/main/java'
         }
+        proto {
+            srcDirs = ['src/main/proto'] // directory containing your .proto files
+        }
     }
 }
 
@@ -92,12 +95,25 @@ test {
     useJUnitPlatform()
 }
 
- task openTerminals {
-     def projectPath = project.projectDir.getAbsolutePath()
-     doLast {
-         ["osascript", "-e", 'tell application "Terminal" to do script "cd /Volumes/SSD/IdeaProjects/distributed-systems-project/build/classes/java/main && java adminserver.StartAdminServer"'].execute()
-         ["osascript", "-e", 'tell application "Terminal" to do script "cd /Volumes/SSD/IdeaProjects/distributed-systems-project/build/classes/java/main && java adminclient.AdminClient"'].execute()
-         ["osascript", "-e", 'tell application "Terminal" to do script "cd /Volumes/SSD/IdeaProjects/distributed-systems-project/build/classes/java/main && java robot.StartRobot"'].execute()
-         ["osascript", "-e", 'tell application "Terminal" to do script "cd /Volumes/SSD/IdeaProjects/distributed-systems-project/build/classes/java/main && java robot.StartRobot"'].execute()
-     }
- }
+task openTerminals {
+    def projectPath = project.projectDir.getAbsolutePath()
+    doLast {
+        // ["osascript", "-e", 'tell application "Terminal" to do script "cd /Volumes/SSD/IdeaProjects/distributed-systems-project/build/classes/java/main && java adminserver.StartAdminServer"'].execute()
+        // ["osascript", "-e", 'tell application "Terminal" to do script "cd /Volumes/SSD/IdeaProjects/distributed-systems-project/build/classes/java/main && java adminclient.AdminClient"'].execute()
+        // ["osascript", "-e", 'tell application "Terminal" to do script "cd /Volumes/SSD/IdeaProjects/distributed-systems-project/build/classes/java/main && java robot.StartRobot"'].execute()
+        // ["osascript", "-e", 'tell application "Terminal" to do script "cd /Volumes/SSD/IdeaProjects/distributed-systems-project/build/classes/java/main && java robot.StartRobot"'].execute()
+        ["osascript", "-e", 'tell application "Terminal" to do script "cd /Volumes/SSD/IdeaProjects/distributed-systems-project/bin/main && java adminserver.StartAdminServer"'].execute()
+        ["osascript", "-e", 'tell application "Terminal" to do script "cd /Volumes/SSD/IdeaProjects/distributed-systems-project/bin/main && java adminclient.AdminClient"'].execute()
+        ["osascript", "-e", 'tell application "Terminal" to do script "cd /Volumes/SSD/IdeaProjects/distributed-systems-project/bin/main && java robot.StartRobot"'].execute()
+        ["osascript", "-e", 'tell application "Terminal" to do script "cd /Volumes/SSD/IdeaProjects/distributed-systems-project/bin/main && java robot.StartRobot"'].execute()
+    }
+}
+
+application {
+    mainClassName = project.hasProperty("mainClass") ? project.getProperty("mainClass") : "NULL"
+}
+
+task execute(type:JavaExec) {
+   main = project.hasProperty("mainClass") ? getProperty("mainClass") : "NULL"
+   classpath = sourceSets.main.runtimeClasspath
+}

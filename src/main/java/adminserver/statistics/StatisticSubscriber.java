@@ -1,7 +1,11 @@
 package adminserver.statistics;
 
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
 import org.eclipse.paho.client.mqttv3.MqttCallback;
@@ -13,8 +17,11 @@ import org.eclipse.paho.client.mqttv3.MqttMessage;
 import adminserver.AdministratorServer;
 import utils.City;
 import utils.MeasurementRecord;
+import utils.Config;
 
 public class StatisticSubscriber implements Runnable {
+
+  private Map<Integer,Integer> sensorCounter = new HashMap<Integer,Integer>();
 
   private City city;
   public StatisticSubscriber(City city) {
@@ -53,18 +60,25 @@ public class StatisticSubscriber implements Runnable {
                 // Called when a message arrives from the server that matches any subscription made by the client
                 String time = new Timestamp(System.currentTimeMillis()).toString();
                 String receivedMessage = new String(message.getPayload());
-                System.out.println("MQTT Subscriber: " + clientId +" Received a Message! - Callback - Thread PID: " + Thread.currentThread().getId() +
-                        "\n\tTime: " + time +
-                        "\tTopic: " + topic +
-                        "\tMessage: " + receivedMessage +
-                        "\tQoS:     " + message.getQos());
                 try {
-                AdministratorServer.getInstance().getStatistics()
-                  .addMeasurement(
-                    MeasurementRecord.fromJson(receivedMessage)
-                  );
+                  MeasurementRecord measurementRecord = MeasurementRecord.fromJson(receivedMessage);
+                  AdministratorServer.getInstance().getStatistics()
+                    .addMeasurement(measurementRecord);
+
+                  // print
+                  int id = measurementRecord.getRobotId();
+                  if (sensorCounter.get(id) == null || sensorCounter.get(id) % Config.PRINT_SENSOR_EVERY == 0) {
+                    sensorCounter.put(id, 0);
+                    System.out.println("MQTT Subscriber: " + clientId +" Received a Message." +
+                            "\n\tTime: " + time +
+                            "\tTopic: " + topic +
+                            "\tMessage: " + receivedMessage +
+                            "\tQoS:     " + message.getQos());
+                  }
+                  sensorCounter.put(id, sensorCounter.get(id) + 1);
+
                 } catch (Exception e) {
-                  System.out.println("MQTT Subscriber:  Error parsing JSON: " + e.getMessage());
+                  System.out.println("MQTT Subscriber: Error parsing JSON: " + e.getMessage());
                 }
             }
 
