@@ -8,7 +8,6 @@ import adminserver.REST.beans.RobotBean;
 import protos.network.Network;
 import protos.network.NetworkMessage;
 import protos.network.NetworkResponse;
-import protos.network.NetworkResult;
 import robot.Robot;
 import utils.Position;
 
@@ -88,7 +87,7 @@ public class RobotNetwork {
   ////////////////////////////////////////////////////////////
 
   private void welcomeAll() {
-    System.out.println("Network: welcoming all robots.");
+    log("welcoming all robots.");
     for (RobotBean robot : this.robots) {
       NetworkResponse response = Robot.getInstance().getCommunication()
         .sendMessageToRobot(
@@ -100,11 +99,11 @@ public class RobotNetwork {
         handleNoResponse(robot.getId(), false);
       }
     }
-    // System.out.println("Network: Robot "+thisRobot.getId()+" welcomed all robots.");
+    // log("Robot "+thisRobot.getId()+" welcomed all robots.");
   }
 
   public void leaveNetwork() {
-    System.out.println("Network: sending leave message to all robots.");
+    log("sending leave message to all robots.");
     for (RobotBean robot : this.robots) {
       Robot.getInstance().getCommunication()
         .sendMessageToRobot(
@@ -123,7 +122,7 @@ public class RobotNetwork {
         this.coordinator.getPortNumber()
       );
 
-    // System.out.println("Network: asked for maintenance to "+this.coordinator.getId()
+    // log("asked for maintenance to "+this.coordinator.getId()
     //     +"\n\tresponse "+response);
     
     if (response == null) {
@@ -135,15 +134,17 @@ public class RobotNetwork {
 
     switch(responseType) {
       case MAINTENANCE_GRANTED:
-        System.out.println("Network: maintenance granted by "+this.coordinator.getId());
+        log("maintenance granted by "+this.coordinator.getId());
         //! call this robot to start maintenence
+        Robot.getInstance().getMaintenance().maintenanceGranted();
         break;
       case MAINTENANCE_NOT_GRANTED:
-        System.out.println("Network: maintenance not granted by "+this.coordinator.getId());
+        log("maintenance not granted by "+this.coordinator.getId());
         //! have to wait?
+        Robot.getInstance().getMaintenance().maintenanceNotGranted();
         break;
       default:
-        System.out.println("Network: received unexpected response from "+this.coordinator.getId());
+        log("received unexpected response from "+this.coordinator.getId());
         break;
     }
 
@@ -166,10 +167,10 @@ public class RobotNetwork {
 
   private void handleNoResponse(int robotId, boolean startElection) {
     if (robotId == this.coordinator.getId() && startElection) {
-      System.out.println("Network: coordinator did not respond, starting election.");
+      log("coordinator did not respond, starting election.");
       this.askToStartElection();
     } else {
-      System.out.println("Network: robot "+robotId+" did not respond, removing from network.");
+      log("robot "+robotId+" did not respond, removing from network.");
       this.robots.removeIf((robot) -> robot.getId() == robotId);
     }
   }
@@ -177,12 +178,12 @@ public class RobotNetwork {
   private void askToStartElection() {
 
     if (isElectionStarted) {
-      System.out.println("Network: election already started (asking).");
+      log("election already started (asking).");
       return;
     }
     isElectionStarted = true;
 
-    System.out.println("Network: Robot "+thisRobot.getId()+" asking to start election.");
+    log("Robot "+thisRobot.getId()+" asking to start election.");
 
     this.coordinator = thisRobot;
     for (RobotBean robot : this.robots) {
@@ -200,20 +201,20 @@ public class RobotNetwork {
         switch(responseType) {
           case ELECTION_OK:
             this.coordinator = null;
-            System.out.println("Network: Robot "+robot.getId()+" accepted election, means I am not coordinator.");
+            log("Robot "+robot.getId()+" accepted election, means I am not coordinator.");
             break;
           case ELECTION_NOT_OK:
-            System.out.println("Network: Robot "+robot.getId()+" did not accept election.");
+            log("Robot "+robot.getId()+" did not accept election.");
             break;
           default:
-            System.out.println("Network: Robot "+robot.getId()+" sent unexpected response.");
+            log("Robot "+robot.getId()+" sent unexpected response.");
             break;
         }
       }
     }
 
     if (this.coordinator != null && this.coordinator.getId() == thisRobot.getId()) {
-      System.out.println("Network: I am the new coordinator.");
+      log("I am the new coordinator.");
       for (RobotBean robot : this.robots) {
         NetworkResponse response = Robot.getInstance().getCommunication()
           .sendMessageToRobot(
@@ -239,7 +240,7 @@ public class RobotNetwork {
       .setSenderId(thisRobot.getId())
       .setSenderPort(thisRobot.getPortNumber())
       .setTimestamp(System.currentTimeMillis())
-      .setAdditionalPayload(additionalPayload)
+      .setAdditionalPayload(additionalPayload == null ? "" : additionalPayload)
       .build();
   }
 
@@ -255,8 +256,7 @@ public class RobotNetwork {
     long ts = message.getTimestamp();
     String additionalPayload = message.getAdditionalPayload();
 
-    System.out.println("Network: received message from robot "+senderId+" with ts: "+ts
-      +"\n\tmessage: "+message);
+    log("received message "+message.getMessageType()+" from "+message.getSenderId()+" at "+message.getSenderPort()+" with timestamp "+message.getTimestamp());
 
     //! make a msg queue with synchronized method?
 
@@ -278,7 +278,7 @@ public class RobotNetwork {
       case COORDINATOR:
         return this.robotIsCoordinator(senderId, senderPort);
       default:
-        System.out.println("Network: received unknown message type: "+type);
+        log("received unknown message type: "+type);
     }
 
     return builNetworkResponse(MessageTypes.ERROR, null);
@@ -288,12 +288,12 @@ public class RobotNetwork {
     RobotBean newRobot = new RobotBean(senderId, "localhost", senderPort);
     // add robot to list
     this.robots.add(newRobot);
-    System.out.println("Network: Robot "+senderId+" welcomed and added to network.");
+    log("Robot "+senderId+" welcomed and added to network.");
 
     // check if new robot is coordinator
     if (senderId > this.coordinator.getId()) {
       this.coordinator = newRobot;
-      System.out.println("Network: Robot "+senderId+" is new coordinator.");
+      log("Robot "+senderId+" is new coordinator.");
     }
 
     return builNetworkResponse(MessageTypes.WELCOME_RESPONSE, null);
@@ -303,14 +303,14 @@ public class RobotNetwork {
 
     // remove robot from list
     this.robots.removeIf((robot) -> robot.getId() == senderId);
-    System.out.println("Network: Robot "+senderId+" removed from network.");
+    log("Robot "+senderId+" removed from network.");
 
     // check if coordinator left
     if (senderId == this.coordinator.getId()) {
       this.coordinator = this.robots.stream()
         .max(Comparator.comparing(RobotBean::getId))
         .orElse(this.thisRobot);
-      System.out.println("Network: Robot "+senderId+" was coordinator, new coordinator is "+this.coordinator.getId());
+      log("Robot "+senderId+" was coordinator, new coordinator is "+this.coordinator.getId());
       //! start election ?
     }
 
@@ -321,7 +321,7 @@ public class RobotNetwork {
     
     if (this.coordinator.getId() != this.thisRobot.getId()) {
       //! add different message? should i inform my coordinator?
-      System.out.println("Network: Robot "+senderId+" asked for maintenance, but I'm not the coordinator.");
+      log("Robot "+senderId+" asked for maintenance, but I'm not the coordinator.");
       return builNetworkResponse(MessageTypes.MAINTENANCE_NOT_GRANTED, null);
     }
 
@@ -330,26 +330,31 @@ public class RobotNetwork {
       .findFirst()
       .orElse(null);
     
+    if (thisRobot.getId() == senderId) {
+      robot = thisRobot;
+      log("Robot "+senderId+" asked for maintenance, and it's me.");
+    }
+
     if (robot == null) {
       //! should I add the robot in the network?
-      System.out.println("Network: Robot "+senderId+" asked for maintenance, but it's not in the network.");
+      log("Robot "+senderId+" asked for maintenance, but it's not in the network.");
       return builNetworkResponse(MessageTypes.MAINTENANCE_NOT_GRANTED, null);
     }
 
     if (this.maintenanceQueue.contains(senderId)) {
       //! maybe add different response messages?
-      System.out.println("Network: Robot "+senderId+" asked for maintenance, but it's already in the queue.");
+      log("Robot "+senderId+" asked for maintenance, but it's already in the queue.");
       return builNetworkResponse(MessageTypes.MAINTENANCE_NOT_GRANTED, null);
     }
 
     if (this.maintenanceQueue.isEmpty()) {
-      System.out.println("Network: Robot "+senderId+" asked for maintenance, granting.");
+      log("Robot "+senderId+" asked for maintenance, granting.");
       this.maintenanceQueue.add(robot);
       return builNetworkResponse(MessageTypes.MAINTENANCE_GRANTED, null);
     } 
 
     this.maintenanceQueue.add(robot);
-    System.out.println("Network: Robot "+senderId+" asked for maintenance, but there are other robots in the queue.");
+    log("Robot "+senderId+" asked for maintenance, but there are other robots in the queue.");
     return builNetworkResponse(MessageTypes.MAINTENANCE_NOT_GRANTED, null);
 
   }
@@ -358,7 +363,7 @@ public class RobotNetwork {
     
     if (this.coordinator.getId() != this.thisRobot.getId()) {
       //! add different message? should i inform my coordinator?
-      System.out.println("Network: Robot "+senderId+" finished maintenance, but I'm not the coordinator.");
+      log("Robot "+senderId+" finished maintenance, but I'm not the coordinator.");
       return builNetworkResponse(MessageTypes.MAINTENENCE_FINISHED_RESPONSE, null);
     }
 
@@ -366,21 +371,26 @@ public class RobotNetwork {
       .filter((r) -> r.getId() == senderId)
       .findFirst()
       .orElse(null);
+    
+    if (thisRobot.getId() == senderId) {
+      robot = thisRobot;
+      log("Robot "+senderId+" finished maintenance, and it's me.");
+    }
 
     if (robot == null) {
       //! should I add the robot in the network?
-      System.out.println("Network: Robot "+senderId+" finished maintenance, but it's not in the network.");
+      log("Robot "+senderId+" finished maintenance, but it's not in the network.");
       return builNetworkResponse(MessageTypes.MAINTENENCE_FINISHED_RESPONSE, null);
     }
 
     if (this.maintenanceQueue.isEmpty()) {
       //! maybe add different response messages?
-      System.out.println("Network: Robot "+senderId+" finished maintenance, but there are no robots in the queue.");
+      log("Robot "+senderId+" finished maintenance, but there are no robots in the queue.");
       return builNetworkResponse(MessageTypes.MAINTENENCE_FINISHED_RESPONSE, null);
     }
 
     this.maintenanceQueue.remove(senderPort);
-    System.out.println("Network: Robot "+senderId+" finished maintenance, removing from queue.");
+    log("Robot "+senderId+" finished maintenance, removing from queue.");
 
     RobotBean nextRobot = this.maintenanceQueue.peek();
     if (nextRobot != null) {
@@ -396,12 +406,12 @@ public class RobotNetwork {
     MessageTypes responseType = senderId < thisRobot.getId() ? MessageTypes.ELECTION_OK : MessageTypes.ELECTION_NOT_OK;
     
     if (this.isElectionStarted) {
-      System.out.println("Network: election already started (receiving).");
+      log("election already started (receiving).");
       return builNetworkResponse(responseType, null);
     }
 
     // propagate election
-    System.out.println("Network: propagate election.");
+    log("propagate election.");
     this.askToStartElection();
 
     return builNetworkResponse(responseType, null);
@@ -418,12 +428,12 @@ public class RobotNetwork {
       .orElse(null);
     
     if (this.coordinator == null) {
-      System.out.println("Network: Robot "+senderId+" is new coordinator, but it's not in the network.");
+      log("Robot "+senderId+" is new coordinator, but it's not in the network.");
       //! must fix this
       return builNetworkResponse(MessageTypes.COORDINATOR_RESPONSE, null);
     }
 
-    System.out.println("Network: Robot "+senderId+" is new coordinator.");
+    log("Robot "+senderId+" is new coordinator.");
     return builNetworkResponse(MessageTypes.COORDINATOR_RESPONSE, null);
 
   }
@@ -437,8 +447,16 @@ public class RobotNetwork {
       .setSenderId(thisRobot.getId())
       .setSenderPort(thisRobot.getPortNumber())
       .setTimestamp(System.currentTimeMillis())
-      .setAdditionalPayload(additionalPayload)
+      .setAdditionalPayload(additionalPayload == null ? "" : additionalPayload)
       .build();
+  }
+
+  ////////////////////////////////////////////////////////////
+  // UTILS
+  ////////////////////////////////////////////////////////////
+
+  private void log(String message) {
+    System.out.println("Network ["+thisRobot.getId()+"]: "+message);
   }
 
 }

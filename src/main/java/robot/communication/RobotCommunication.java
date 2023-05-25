@@ -8,7 +8,6 @@ import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import protos.network.NetworkMessage;
 import protos.network.NetworkResponse;
-import protos.network.NetworkResult;
 import protos.network.NetworkServiceGrpc;
 import protos.network.NetworkServiceGrpc.NetworkServiceBlockingStub;
 
@@ -168,11 +167,11 @@ public class RobotCommunication {
 
       NetworkServiceBlockingStub stub = NetworkServiceGrpc.newBlockingStub(channel);
 
-      System.out.println("gRPC: Sending message: "+request+", to port:"+recipientPort);
+      System.out.println("gRPC: Sending message: "+request.getMessageType()+" from "+request.getSenderId()+" at "+request.getSenderPort()+" with timestamp "+request.getTimestamp());
 
       NetworkResponse response = stub.sendNetworkMessage(request);
 
-      System.out.println("gRPC: Response: "+response);
+      System.out.println("gRPC: Response: "+response.getMessageType()+" from "+response.getSenderId()+" at "+response.getSenderPort()+" with timestamp "+response.getTimestamp());
 
       channel.shutdown();
 

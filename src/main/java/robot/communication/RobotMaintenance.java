@@ -50,19 +50,27 @@ public class RobotMaintenance implements Runnable {
 
   public void goToMaintenance() {
     if (Math.random() < changeOfMalfunction) {
-      System.out.println("Malfunction: "+ Robot.getInstance().getId()+" is going to maintenance");
+      System.out.println("Maintenance: "+ Robot.getInstance().getId()+" needs to go to maintenance");
       // ask for permission to coordinator to go to maintenance
       Robot.getInstance().getNetwork().askForMaintenance();
-      try {
-        Robot.getInstance().startMaintenance();
-        Thread.sleep(10*1000);
-      } catch (InterruptedException e) {
-        e.printStackTrace();
-      }
-      // release permission to coordinator to go to maintenance
-      Robot.getInstance().endMaintenance();
-      Robot.getInstance().getNetwork().hasFinishedMaintenance();
+      //! do I have to stop the robot until I get the permission?
     }
+  }
+
+  public void maintenanceGranted() {
+    System.out.println("Maintenance: granted");
+    try {
+      //! block the robot?
+      Thread.sleep(10*1000);
+    } catch (InterruptedException e) {
+      e.printStackTrace();
+    }
+    System.out.println("Maintenance: finished");
+    Robot.getInstance().getNetwork().hasFinishedMaintenance();
+  }
+  public void maintenanceNotGranted() {
+    System.out.println("Maintenance: denied");
+    //! do I have to wait?
   }
 
 }

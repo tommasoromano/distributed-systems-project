@@ -68,7 +68,7 @@ public class RobotInput implements Runnable {
             Robot.getInstance().disconnect();
             break;
           case "fix":
-            Robot.getInstance().startMaintenance();
+            Robot.getInstance().getMaintenance().goToMaintenance();
             break;
           default:
             System.out.println("Invalid option.");

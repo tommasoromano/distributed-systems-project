@@ -127,20 +127,20 @@ public class Robot {
   // MISC
   ////////////////////////////////////////////////////////////
 
-  public void startMaintenance() {
-    if (this.inMaintenance) { return; }
-    this.inMaintenance = true;
+  // public void startMaintenance() {
+  //   if (this.inMaintenance) { return; }
+  //   this.inMaintenance = true;
 
-    this.communication.startMaintenance();
-    this.sensor.startMaintenance();
-  }
-  public void endMaintenance() {
-    if (!this.inMaintenance) { return; }
-    this.inMaintenance = false;
+  //   this.communication.startMaintenance();
+  //   this.sensor.startMaintenance();
+  // }
+  // public void endMaintenance() {
+  //   if (!this.inMaintenance) { return; }
+  //   this.inMaintenance = false;
 
-    this.communication.endMaintenance();
-    this.sensor.endMaintenance();
-  }
+  //   this.communication.endMaintenance();
+  //   this.sensor.endMaintenance();
+  // }
 
   ////////////////////////////////////////////////////////////
   // 
@@ -280,5 +280,8 @@ public class Robot {
   }
   public RobotNetwork getNetwork() {
     return this.network;
+  }
+  public RobotMaintenance getMaintenance() {
+    return this.maintenance;
   }
 }
