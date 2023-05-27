@@ -3,7 +3,7 @@ package robot;
 import adminserver.REST.beans.InsertRobotBean;
 import robot.communication.RobotCommunication;
 import robot.communication.RobotMaintenance;
-import robot.communication.RobotNetwork;
+import robot.communication.network.RobotNetwork;
 import utils.City;
 import utils.Position;
 
@@ -16,12 +16,6 @@ public class Robot {
   private RobotNetwork network;
   private RobotMaintenance maintenance;
 
-  private Thread inputThread;
-  private Thread sensorThread;
-  // private Thread communicationThread;
-  // private Thread networkThread;
-  private Thread maintenanceThread;
-
   private int cityId = -1;
   private int districtId = -1;
   private int id = -1;
@@ -30,7 +24,6 @@ public class Robot {
   private Position position = null;
 
   private boolean init = false;
-  private boolean inMaintenance = false;
 
   private Robot() {
     this.input = new RobotInput();
@@ -53,9 +46,7 @@ public class Robot {
 
     if (init) { return; }
 
-    Thread inputThread = new Thread(this.input);
-    this.inputThread = inputThread;
-    inputThread.start();
+    this.input.start();
   
     // Shutdown hook
     Runtime.getRuntime().addShutdownHook(new Thread() {
@@ -90,57 +81,41 @@ public class Robot {
     // join network
     try {
       InsertRobotBean insertRobotBean = this.communication.joinNetwork();
+      if (insertRobotBean == null) {
+        System.out.println("Robot "+this.id+" failed to join the network.");
+        return;
+      }
       Position pos = new Position(insertRobotBean.getX(), insertRobotBean.getY());
       this.setDistrictId(City.getCityById(this.cityId)
           .getDistrictByPosition(pos).getId());
+
       this.network = new RobotNetwork(pos, insertRobotBean.getRobots());
+
     } catch (Exception e) {
-      System.out.println("Robot "+this.id+" failed to join the network."
-          + "\n\tError: " + e.getMessage());
-      e.printStackTrace();
+      System.out.println("Robot "+this.id+" failed to join the network.");
       this.disconnect();
       return;
     }
 
-    // start threads
-
-    Thread sensorThread = new Thread(this.sensor);
-    // Thread communicationThread = new Thread(this.communication);
-    // Thread networkThread = new Thread(this.network);
-    Thread maintenanThread = new Thread(this.maintenance);
-
-    this.sensorThread = sensorThread;
-    // this.communicationThread = communicationThread;
-    // this.networkThread = networkThread;
-    this.maintenanceThread = maintenanThread;
-
-    sensorThread.start();
-    // communicationThread.start();
-    // networkThread.start();
-    maintenanThread.start();
+    // sensor.start();
+    // communication.start();
+    // network.start();
+    this.sensor.start();
+    this.maintenance.start();
 
     this.init = true;
     System.out.println("Robot initialized.");
+  }
+
+  public boolean isInit() {
+    return this.init;
   }
 
   ////////////////////////////////////////////////////////////
   // MISC
   ////////////////////////////////////////////////////////////
 
-  // public void startMaintenance() {
-  //   if (this.inMaintenance) { return; }
-  //   this.inMaintenance = true;
-
-  //   this.communication.startMaintenance();
-  //   this.sensor.startMaintenance();
-  // }
-  // public void endMaintenance() {
-  //   if (!this.inMaintenance) { return; }
-  //   this.inMaintenance = false;
-
-  //   this.communication.endMaintenance();
-  //   this.sensor.endMaintenance();
-  // }
+  
 
   ////////////////////////////////////////////////////////////
   // 
@@ -166,6 +141,19 @@ public class Robot {
    */
   public void disconnect() {
 
+    //! must wait until mechanic finished
+    if (getMaintenance().getState() == RobotMaintenance.State.IN) {
+      System.out.println("Robot "+this.id+" is in maintenance. Waiting for it to finish...");
+      while (getMaintenance().getState() == RobotMaintenance.State.IN) {
+        try {
+          Thread.sleep(1000);
+        } catch (InterruptedException e) {
+          System.out.println("Robot "+this.id+" was interrupted while waiting for maintenance to finish.");
+          break;
+        }
+      }
+    }
+
     if (Robot.instance == null
     || this.id == -1) { return; }
 
@@ -173,6 +161,7 @@ public class Robot {
 
     try {
       this.communication.disconnect();
+      // this.network.disconnect();
     } catch (Exception e) {
       System.out.println("Robot "+this.id+" failed to disconnect from the network."
         +"\n\t"+e.getMessage());
@@ -191,17 +180,11 @@ public class Robot {
 
     System.out.println("Destroying robot "+this.id+".");
 
-    this.inputThread.interrupt();
-    this.sensorThread.interrupt();
-    // this.communicationThread.interrupt();
-    // this.networkThread.interrupt();
-    this.maintenanceThread.interrupt();
-    
-    this.inputThread = null;
-    this.sensorThread = null;
-    // this.communicationThread = null;
-    // this.networkThread = null;
-    this.maintenanceThread = null;
+    this.input.destroy();
+    this.sensor.destroy();
+    // this.communication.destroy();
+    // this.network.destroy();
+    this.maintenance.destroy();
 
     this.cityId = -1;
     this.id = -1;
@@ -214,6 +197,8 @@ public class Robot {
 
     System.out.println("Robot destroyed.");
     System.out.println("Exiting...");
+
+    Thread.
 
     Runtime.getRuntime().exit(0);
   }
@@ -246,7 +231,7 @@ public class Robot {
     return this.id;
   }
   public void setId(int id) {
-    if (this.id != -1) {
+    if (this.id != -1 && this.init) {
       System.out.println("Robot already has an id.");
       return;
     }
@@ -256,7 +241,7 @@ public class Robot {
     return this.ipAddress;
   }
   public void setIpAddress(String ipAddress) {
-    if (!this.ipAddress.equals("")) {
+    if (!this.ipAddress.equals("") && this.init) {
       System.out.println("Robot already has an ip address.");
       return;
     }
@@ -266,14 +251,11 @@ public class Robot {
     return this.portNumber;
   }
   public void setPortNumber(int portNumber) {
-    if (this.portNumber != -1) {
+    if (this.portNumber != -1 && this.init) {
       System.out.println("Robot already has a port number.");
       return;
     }
     this.portNumber = portNumber;
-  }
-  public boolean isInMaintenance() {
-    return this.inMaintenance;
   }
   public RobotCommunication getCommunication() {
     return this.communication;

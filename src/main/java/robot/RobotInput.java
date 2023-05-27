@@ -2,11 +2,13 @@ package robot;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
-import java.net.ConnectException;
 
 import utils.City;
 
 public class RobotInput implements Runnable {
+
+  private Thread thisThread;
+  private boolean running;
 
   public RobotInput() {
   }
@@ -14,11 +16,12 @@ public class RobotInput implements Runnable {
   @Override
   public void run() {
     System.out.println("RobotInput running...");
+    running = true;
     
     Robot.getInstance().setCityId(City.selectCityStdInput().getId());
 
     // robot init
-    while(true) {
+    while(!Robot.getInstance().isInit()) {
       BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
       String input;
 
@@ -46,14 +49,13 @@ public class RobotInput implements Runnable {
 
         Robot.getInstance().init(id, ipAddress, portNumber);
 
-        break;
       } catch (Exception e) {
         System.out.println(e.getMessage());
       }
     }
 
     // robot menu
-    while(true) {
+    while(running) {
       BufferedReader br = new BufferedReader(new InputStreamReader(System.in));
       String input;
 
@@ -75,9 +77,19 @@ public class RobotInput implements Runnable {
             break;
         }
       } catch (Exception e) {
-        System.out.println("Error: "+e.getMessage());
+        System.out.println("Input Error: "+e.getMessage());
+        break;
       }
     }
 
+  }
+
+  public void start() {
+    thisThread = new Thread(this);
+    thisThread.start();
+  }
+  public void destroy() {
+    running = false;
+    thisThread.interrupt();
   }
 }

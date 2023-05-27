@@ -10,11 +10,11 @@ public class StatisticsBroker implements Runnable {
         ProcessBuilder builder = new ProcessBuilder(brokerCommand);
         builder.inheritIO(); // redirect the child process's standard output and error to the parent process's standard output and error
         Process process = builder.start();
-        System.out.println("MQTT broker started - Thread PID: " + Thread.currentThread().getId());
+        System.out.println("MQTT broker started");
 
         int exitCode = process.waitFor(); // wait for the child process to exit
 
-        System.out.println("MQTT broker exited with code " + exitCode);
+        // System.out.println("MQTT broker exited with code " + exitCode);
       } catch (Exception e) {
         e.printStackTrace();
       }

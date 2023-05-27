@@ -70,7 +70,7 @@ public class Statistics {
 
 	public synchronized void setValidRobotIds(List<Integer> validRobotIds) {
 
-		System.out.println("Statistics: setting valid robot ids: " + validRobotIds);
+		// System.out.println("Statistics: setting valid robot ids: " + validRobotIds);
 
 		this.validRobotIds = validRobotIds;
 		this.statisticsDB.removeRecordsNotInValidRobotIds(validRobotIds);

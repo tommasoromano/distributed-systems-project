@@ -134,7 +134,7 @@ public class AdministratorServer {
 		}
 
 		System.out.println("AdministratorServer: Successfully registered robot with id " + robotBean.getId());
-
+		printRegisteredRobots();
 		return new InsertRobotBean(startPosition.getX(), startPosition.getY(), robotBeans);
 	}
 
@@ -173,7 +173,7 @@ public class AdministratorServer {
 		this.statistics.setValidRobotIds(validRobotIds);
 
 		System.out.println("AdministratorServer: Successfully removed robot with id " + id);
-
+		printRegisteredRobots();
 	}
 
 	public Statistics getStatistics() {
@@ -182,5 +182,13 @@ public class AdministratorServer {
 
 	public synchronized String getCityRepresentation() {
 		return this.city.getRepresentation();
+	}
+
+	private void printRegisteredRobots() {
+		String res = "";
+		for (RegisteredRobot registeredRobot : this.registeredRobots) {
+			res += registeredRobot.getId() + " ";
+		}
+		System.out.println("AdministratorServer: Registered robots [ " + res + "]");
 	}
 }

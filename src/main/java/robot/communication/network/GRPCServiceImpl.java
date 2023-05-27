@@ -1,4 +1,4 @@
-package robot.communication;
+package robot.communication.network;
 
 import io.grpc.stub.StreamObserver;
 import protos.network.NetworkMessage;
@@ -15,6 +15,15 @@ public class GRPCServiceImpl extends NetworkServiceImplBase {
     NetworkResponse response = Robot.getInstance().getCommunication()
       .createResponseForRobotMessage(request);
 
+    if (response == null) {
+      response = NetworkResponse.newBuilder()
+        .setMessageType("ACK")
+        .setSenderId(Robot.getInstance().getId())
+        .setSenderPort(Robot.getInstance().getPortNumber())
+        .setTimestamp(System.currentTimeMillis())
+        .setAdditionalPayload("")
+        .build();
+    }
     responseObserver.onNext(response);
 
     responseObserver.onCompleted();

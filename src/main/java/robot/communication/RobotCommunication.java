@@ -1,15 +1,22 @@
 package robot.communication;
 
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
 import javax.ws.rs.core.Response;
 
 import adminserver.REST.RESTutils;
 import adminserver.REST.beans.InsertRobotBean;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import io.grpc.stub.StreamObserver;
 import protos.network.NetworkMessage;
 import protos.network.NetworkResponse;
 import protos.network.NetworkServiceGrpc;
-import protos.network.NetworkServiceGrpc.NetworkServiceBlockingStub;
+import protos.network.NetworkServiceGrpc.NetworkServiceStub;
 
 import org.eclipse.paho.client.mqttv3.MqttClient;
 import org.eclipse.paho.client.mqttv3.MqttConnectOptions;
@@ -19,6 +26,7 @@ import org.eclipse.paho.client.mqttv3.MqttMessage;
 import com.sun.jersey.api.client.ClientResponse;
 
 import robot.Robot;
+import robot.communication.network.GRPCServer;
 import utils.City;
 import utils.Config;
 
@@ -27,6 +35,7 @@ public class RobotCommunication {
   private MqttClient client;
 
   private Thread grpcThread;
+  private Map<Integer, NetworkServiceStub> grpcStubsMap = new HashMap<>();
 
   private boolean connectedToAdmin = false;
   private boolean connectedToMQTT = false;
@@ -58,8 +67,7 @@ public class RobotCommunication {
     if (response.getStatus() != Response.Status.OK.getStatusCode()) {
       System.out.println("Communication: Robot "+robot.getId()+" failed to register to admin."
           + "\n\tError code: " + response.getStatus());
-      throw new RuntimeException("Robot "+robot.getId()+" failed to register to admin." 
-          + "\n\tError code: " + response.getStatus());
+      return null;
     }
     System.out.println("Communication: This Robot "+robot.getId()+" registered to admin.");
     this.connectedToAdmin = true;
@@ -154,50 +162,66 @@ public class RobotCommunication {
     this.connectedToGRPC = connectedToGRPC;
   }
 
-  public NetworkResponse sendMessageToRobot(NetworkMessage msg, int recipientPort) {
-    return this.sendGRPCMessage(msg, recipientPort);
+  public void sendMessageToRobot(NetworkMessage msg, int recipientId, int recipientPort) {
+    this.sendGRPCMessage(msg, recipientId, recipientPort);
   }
 
-  private NetworkResponse sendGRPCMessage(NetworkMessage request, int recipientPort) {
+  private void sendGRPCMessage(NetworkMessage request, int recipientId, int recipientPort) {
     
     try {
 
-      final ManagedChannel channel =
-          ManagedChannelBuilder.forTarget("localhost:"+recipientPort).usePlaintext().build();
+      if (!this.grpcStubsMap.containsKey(recipientPort)) {
 
-      NetworkServiceBlockingStub stub = NetworkServiceGrpc.newBlockingStub(channel);
+      final ManagedChannel _channel = ManagedChannelBuilder.forTarget("localhost:"+recipientPort).usePlaintext().build();
+      NetworkServiceStub _stub = NetworkServiceGrpc.newStub(_channel);
+        this.grpcStubsMap.put(recipientPort, _stub);
+      }
 
-      System.out.println("gRPC: Sending message: "+request.getMessageType()+" from "+request.getSenderId()+" at "+request.getSenderPort()+" with timestamp "+request.getTimestamp());
+      NetworkServiceStub stub = this.grpcStubsMap.get(recipientPort);
 
-      NetworkResponse response = stub.sendNetworkMessage(request);
+      // System.out.println("gRPC: Sending message: "+request.getMessageType()+" from "+request.getSenderId()+" at "+request.getSenderPort()+" with timestamp "+request.getTimestamp());
 
-      System.out.println("gRPC: Response: "+response.getMessageType()+" from "+response.getSenderId()+" at "+response.getSenderPort()+" with timestamp "+response.getTimestamp());
+      StreamObserver<NetworkResponse> responseObserver = new StreamObserver<NetworkResponse>() {
+        @Override
+        public void onNext(NetworkResponse response) {
+          // System.out.println("gRPC Observer: Response: "+response.getMessageType()+" from "+response.getSenderId()+" at "+response.getSenderPort()+" with timestamp "+response.getTimestamp());
+          Robot.getInstance().getNetwork().createResponseForRobotMessage(response);
+        }
+        @Override
+        public void onError(Throwable t) {
+          // if no response remove from network
+          System.out.println("gRPC Observer: Error: "+t.getMessage());
+          try {
+            Robot.getInstance().getNetwork().createResponseForRobotMessage(
+              NetworkMessage.newBuilder()
+                .setMessageType("LEAVING")
+                .setSenderId(recipientId)
+                .setSenderPort(recipientPort)
+                .setTimestamp(System.currentTimeMillis())
+                .build()
+            );
+          } catch (Exception e) {
+            System.out.println("gRPC Observer: LEAVING Error: "+e.getMessage());
+          }
+        }
+        @Override
+        public void onCompleted() {
+          // System.out.println("gRPC Observer: Completed");
+        }
+      };
 
-      channel.shutdown();
+      stub.sendNetworkMessage(request, responseObserver);
 
-      return response;
+      //! add channel shutdown when lost connection
 
     } catch (Exception e) {
       System.out.println("gRPC: Send message Error: "+e.getMessage());
       // e.printStackTrace();
-      return null;
     }
   }
 
   public NetworkResponse createResponseForRobotMessage(NetworkMessage message) {
     return Robot.getInstance().getNetwork().createResponseForRobotMessage(message);
-  }
-
-  ////////////////////////////////////////////////////////////
-  // MAINTENENCE
-  ////////////////////////////////////////////////////////////
-
-  public void startMaintenance() {
-    // TODO
-  }
-
-  public void endMaintenance() {
-    // TODO
   }
 
   ////////////////////////////////////////////////////////////
@@ -219,9 +243,27 @@ public class RobotCommunication {
     }
     System.out.println("Communication: Robot "+robot.getId()+" removed from admin.");
 
-    //! send messages to the other robots
-    Robot.getInstance().getNetwork().leaveNetwork();
+    // mqtt
+    try {
+      client.disconnect();
+      client.close();
+    } catch (MqttException e) {
+      // e.printStackTrace();
+    }
+    System.out.println("Communication: Robot "+robot.getId()+" left the MQTT network.");
 
+    // network and grpc
+    robot.getNetwork().disconnect();
+    for (int port : this.grpcStubsMap.keySet()) {
+      ManagedChannel channel = (ManagedChannel) this.grpcStubsMap.get(port).getChannel();
+      channel.shutdown();
+      // try {
+      //   channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
+      // } catch (InterruptedException e) {
+      //   e.printStackTrace();
+      // }
+    }
+    grpcThread.interrupt();
     System.out.println("Communication: Robot "+robot.getId()+" left the network.");
 
   }

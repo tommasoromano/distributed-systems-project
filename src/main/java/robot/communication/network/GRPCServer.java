@@ -1,4 +1,4 @@
-package robot.communication;
+package robot.communication.network;
 
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
@@ -19,6 +19,12 @@ public class GRPCServer implements Runnable {
       System.out.println("gRPC: running on port "+Robot.getInstance().getPortNumber()+"...");
       Robot.getInstance().getCommunication().setConnectedToGRPC(true);
 
+      // Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+      //     System.out.println("Shutting down gRPC server");
+      //     MyServiceServer.this.stop();
+      //     System.out.println("Server shut down");
+      // }));
+
       server.awaitTermination();
     } catch (Exception e) {
       System.out.println("gRPC: Error: " + e.getMessage());
@@ -26,4 +32,10 @@ public class GRPCServer implements Runnable {
     }
   }
   
+  // public void stop() {
+  //   if (server != null) {
+  //     server.shutdown();
+  //   }
+  // }
+
 }

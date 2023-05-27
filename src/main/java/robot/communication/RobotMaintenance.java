@@ -27,50 +27,98 @@ import java.util.TimerTask;
  */
 public class RobotMaintenance implements Runnable {
 
-  private long malfunctionLoop = 10;
-  private float changeOfMalfunction = 0.1f;
+  private Thread thisThread;
 
-  public RobotMaintenance() {}
+  private long malfunctionLoop = 10;
+  private float changeOfMalfunction = 0.01f;
+  private int malfunctionLength = 10;
+
+  public enum State {
+    ASK,
+    IN,
+    OUT
+  }
+  private State state;
+  private long askedTimestamp;
+  // private Timer scheduler;
+
+  public RobotMaintenance() {
+    this.state = State.OUT;
+  }
 
   @Override
   public void run() {
+    // scheduler = new Timer();
+    // TimerTask task = new TimerTask() {
+    //     @Override
+    //     public void run() {
+    //       if (Math.random() < changeOfMalfunction) {
+    //         Robot.getInstance().getMaintenance().goToMaintenance();
+    //       }
+    //     }
+    // };
+    // scheduler.schedule(task, malfunctionLoop*1000, malfunctionLoop*1000);
 
-    Timer timer = new Timer();
-    TimerTask task = new TimerTask() {
-        @Override
-        public void run() {
-          goToMaintenance();
-        }
-    };
-
-    // Schedule the task to run every 15 seconds
-    timer.schedule(task, malfunctionLoop*1000, malfunctionLoop*1000);
+    while (true) {
+      if (Math.random() < changeOfMalfunction) {
+        Robot.getInstance().getMaintenance().goToMaintenance();
+      }
+      try {
+        Thread.sleep(malfunctionLoop*1000);
+      } catch (InterruptedException e) {
+        // e.printStackTrace();
+        break;
+      }
+    }
 
   }
 
   public void goToMaintenance() {
-    if (Math.random() < changeOfMalfunction) {
-      System.out.println("Maintenance: "+ Robot.getInstance().getId()+" needs to go to maintenance");
-      // ask for permission to coordinator to go to maintenance
-      Robot.getInstance().getNetwork().askForMaintenance();
-      //! do I have to stop the robot until I get the permission?
+    if (getState() != State.OUT) {
+      return;
     }
+    System.out.println("Maintenance: "+ Robot.getInstance().getId()+" needs to go to maintenance");
+    setState(State.ASK);
+    Robot.getInstance().getNetwork().askForMaintenance();
   }
 
   public void maintenanceGranted() {
+    if (getState() == State.IN) {
+      return;
+    }
     System.out.println("Maintenance: granted");
+    setState(State.IN);
     try {
-      //! block the robot?
-      Thread.sleep(10*1000);
+      Thread.sleep(malfunctionLength*1000);
     } catch (InterruptedException e) {
       e.printStackTrace();
     }
     System.out.println("Maintenance: finished");
+    setState(State.OUT);
     Robot.getInstance().getNetwork().hasFinishedMaintenance();
   }
-  public void maintenanceNotGranted() {
-    System.out.println("Maintenance: denied");
-    //! do I have to wait?
+
+  private synchronized void setState(State state) {
+    this.state = state;
+  }
+
+  public synchronized State getState() {
+    return this.state;
+  }
+
+  public long getAskedTimestamp() {
+    return this.askedTimestamp;
+  }
+
+
+  public void start() {
+    thisThread = new Thread(this);
+    thisThread.start();
+  }
+  public void destroy() {
+    // scheduler.cancel();
+    System.out.println("Maintenance: destroyed");
+    thisThread.interrupt();
   }
 
 }

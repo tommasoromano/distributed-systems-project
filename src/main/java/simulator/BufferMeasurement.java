@@ -30,7 +30,7 @@ public class BufferMeasurement implements Buffer {
   private List<Measurement> measurements;
   private int windowSize = 8;
   private int overlapFactor = 50;
-  private List<Double> averages;
+  private List<Measurement> averages;
   
   private boolean stopPrintMsg = false;
 
@@ -38,7 +38,7 @@ public class BufferMeasurement implements Buffer {
 
   private BufferMeasurement() {
     this.measurements = new ArrayList<Measurement>();
-    this.averages = new ArrayList<Double>();
+    this.averages = new ArrayList<Measurement>();
   }
 
   public static BufferMeasurement getInstance() {
@@ -61,7 +61,12 @@ public class BufferMeasurement implements Buffer {
         avg += m.getValue();
       }
       avg /= this.measurements.size();
-      this.averages.add(avg);
+      this.averages.add(new Measurement(
+        this.measurements.get(0).getId(), 
+        this.measurements.get(0).getType(), 
+        avg, 
+        System.currentTimeMillis())
+      );
       // remove first half of the window
       for (int i = 0; i < windowSize*overlapFactor/100; i++) {
         this.measurements.remove(0);
@@ -76,15 +81,18 @@ public class BufferMeasurement implements Buffer {
 
   @Override
   public synchronized List<Measurement> readAllAndClean() {
-    List<Measurement> toReturn = new ArrayList<Measurement>(this.measurements);
+    List<Measurement> toReturn = new ArrayList<Measurement>(this.averages);
     this.measurements.clear();
     this.averages.clear();
     return toReturn;
   }
 
   public synchronized MeasurementRecord createMeasurementRecord() {
-    List<Double> avgs = new ArrayList<Double>(this.averages);
-    this.readAllAndClean();
+    List<Measurement> MeasurementAvgs = this.readAllAndClean();
+    List<Double> avgs = new ArrayList<Double>();
+    for (Measurement m : MeasurementAvgs) {
+      avgs.add(m.getValue());
+    }
     return new MeasurementRecord(
       Robot.getInstance().getId(),
       System.currentTimeMillis(),

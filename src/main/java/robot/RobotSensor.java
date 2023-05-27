@@ -38,24 +38,15 @@ import utils.MeasurementRecord;
  */
 public class RobotSensor implements Runnable {
 
+  private Thread thisThread;
   private Simulator pm10Simulator;
   private Thread pm10Thread;
   private BufferMeasurement pm10Buffer;
+  // private Timer scheduler;
 
   @Override
   public void run() {
-
-    Timer timer = new Timer();
-    TimerTask task = new TimerTask() {
-        @Override
-        public void run() {
-          sendPollutionLevel();
-        }
-    };
-
-    // Schedule the task to run every 15 seconds
-    timer.schedule(task, 15000, 15000);
-
+    
     // start PM10 simulator
     this.pm10Buffer = BufferMeasurement.getInstance();
     this.pm10Simulator = new PM10Simulator(
@@ -66,6 +57,26 @@ public class RobotSensor implements Runnable {
     this.pm10Thread.start();
 
     System.out.println("RobotSensor: started.");
+
+    // this.scheduler = new Timer();
+    // TimerTask task = new TimerTask() {
+    //     @Override
+    //     public void run() {
+    //       sendPollutionLevel();
+    //     }
+    // };
+    // this.scheduler.schedule(task, 15*1000, 15*1000);
+
+    while(true){
+      try {
+        Thread.sleep(15*1000);
+        sendPollutionLevel();
+      } catch (InterruptedException e) {
+        // System.out.println("RobotSensor: interrupted.");
+        break;
+      }
+    }
+
   }
 
   public void sendPollutionLevel() {
@@ -79,13 +90,21 @@ public class RobotSensor implements Runnable {
     );
   }
 
-  public void startMaintenance() {
-    this.pm10Thread.interrupt();
-    // TODO
-  }
 
-  public void endMaintenance() {
-    // TODO
+  public void start() {
+    thisThread = new Thread(this);
+    thisThread.start();
+  }
+  public void destroy() {
+    try {
+      this.pm10Simulator.stopMeGently();
+      // this.pm10Thread.interrupt();
+    } catch (Exception e) {
+      // System.out.println("RobotSensor: error while destroying.");
+    }
+    // this.scheduler.cancel();
+    System.out.println("RobotSensor: destroyed.");
+    thisThread.interrupt();
   }
 
 }

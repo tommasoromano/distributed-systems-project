@@ -4,7 +4,7 @@
     <module name="testProgetto.main" />
     <extension name="coverage">
       <pattern>
-        <option name="PATTERN" value="robot.communication.*" />
+        <option name="PATTERN" value="robot.communication.network.*" />
         <option name="ENABLED" value="true" />
       </pattern>
     </extension>
