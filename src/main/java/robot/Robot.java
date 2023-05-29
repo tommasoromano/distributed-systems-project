@@ -49,19 +49,19 @@ public class Robot {
     this.input.start();
   
     // Shutdown hook
-    Runtime.getRuntime().addShutdownHook(new Thread() {
-        public void run() {
-          System.out.println("Shutdown hook running...");
-            if (Robot.instance == null
-              || Robot.getInstance().getId() == -1
-              || !Robot.getInstance().init) { 
-                System.out.println("Robot not initialized or destroied. Nothing to do.");
-                return; 
-              }
-            System.out.println("Shutting down robot "+Robot.getInstance().getId()+"...");
-            disconnect();
-        }
-    });
+    // Runtime.getRuntime().addShutdownHook(new Thread() {
+    //     public void run() {
+    //       System.out.println("Shutdown hook running...");
+    //         if (Robot.instance == null
+    //           || Robot.getInstance().getId() == -1
+    //           || !Robot.getInstance().init) { 
+    //             System.out.println("Robot not initialized or destroied. Nothing to do.");
+    //             return; 
+    //           }
+    //         System.out.println("Shutting down robot "+Robot.getInstance().getId()+"...");
+    //         disconnect();
+    //     }
+    // });
   }
 
   public void init(int id, String ipAddress, int portNumber) {
@@ -90,6 +90,7 @@ public class Robot {
           .getDistrictByPosition(pos).getId());
 
       this.network = new RobotNetwork(pos, insertRobotBean.getRobots());
+      this.network.start();
 
     } catch (Exception e) {
       System.out.println("Robot "+this.id+" failed to join the network.");
@@ -197,8 +198,6 @@ public class Robot {
 
     System.out.println("Robot destroyed.");
     System.out.println("Exiting...");
-
-    Thread.
 
     Runtime.getRuntime().exit(0);
   }

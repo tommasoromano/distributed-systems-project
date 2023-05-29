@@ -10,6 +10,7 @@ import protos.network.NetworkMessage;
 import protos.network.NetworkResponse;
 import robot.Robot;
 import robot.communication.RobotMaintenance;
+import utils.Config;
 import utils.Position;
 
 /**
@@ -25,7 +26,7 @@ import utils.Position;
  * of Greenfield. You have to handle critical issues like the insertion/removal
  * of a robot in the smart city during the execution of the mutual exclusion algorithm.
  * For the sake of simplicity, you can assume that the clocks of the robots
- * are properly synchronized and that the timestamps of their requests will
+ * are properly and that the timestamps of their requests will
  * never be the same (like Lamport total order can ensure). Note that, all the
  * communications between the robots must be handled through gRPC.
  * The maintenance operation is simulated through a Thread.sleep() of
@@ -36,11 +37,9 @@ import utils.Position;
  */
 public class RobotNetwork {
   private Position position;
-  private List<RobotBean> robots;
-  private RobotBean thisRobot;
-
-  private NetworkQueue networkQueue;
-  private List<RobotBean> robotOks;
+  private RobotNetworkResources resource;
+  // private Timer robotAskRetrier;
+  private Thread retryAskThread;
 
   enum MessageTypes {
     WELCOME,
@@ -57,26 +56,21 @@ public class RobotNetwork {
 
   public RobotNetwork(Position position, List<RobotBean> startRobots) {
     this.position = position;
-    this.robots = new ArrayList<>(startRobots);
-    this.networkQueue = new NetworkQueue();
-    this.robotOks = new ArrayList<>();
-
-    this.thisRobot = new RobotBean(
-      Robot.getInstance().getId(),
-      "localhost",
-      Robot.getInstance().getPortNumber()
-    );
-
-    this.welcomeAll();
+    this.resource = new RobotNetworkResources(startRobots);
   }
 
   ////////////////////////////////////////////////////////////
   // SENDING
   ////////////////////////////////////////////////////////////
 
+  public void start() {
+    log("starting network");
+    welcomeAll();
+  }
+
   private void welcomeAll() {
-    log("welcoming all robots.");
-    for (RobotBean robot : getRobots()) {
+    // log("welcoming all robots.");
+    for (RobotBean robot : resource.getRobotsCopy()) {
       log("sending welcome message to "+robot.getId());
       Robot.getInstance().getCommunication()
         .sendMessageToRobot(
@@ -88,8 +82,8 @@ public class RobotNetwork {
   }
 
   private void leaveNetwork() {
-    log("sending leave message to all robots.");
-    for (RobotBean robot : getRobots()) {
+    // log("sending leave message to all robots.");
+    for (RobotBean robot : resource.getRobotsCopy()) {
       log("sending leave message to "+robot.getId());
       Robot.getInstance().getCommunication()
         .sendMessageToRobot(
@@ -100,9 +94,20 @@ public class RobotNetwork {
     }
   }
 
-  public void askForMaintenance() {
-    log("asking for maintenance to all");
-    for (RobotBean robot : getRobots()) {
+  public synchronized void askForMaintenance() {
+
+    if (Robot.getInstance().getMaintenance().getState() != RobotMaintenance.State.ASK) {
+      return;
+    }
+
+    checkAndRunMaintenance();
+
+    // log("asking for maintenance to all");
+    for (RobotBean robot : resource.getRobotsCopy()) {
+      // check if have already sent
+      if (resource.containsOk(robot.getId())) {
+        continue;
+      }
       log("sending maintenance request to "+robot.getId());
       Robot.getInstance().getCommunication()
         .sendMessageToRobot(
@@ -111,30 +116,29 @@ public class RobotNetwork {
           robot.getPortNumber()
         );
     }
-    log("sending maintenance request to "+thisRobot.getId());
-      Robot.getInstance().getCommunication()
-        .sendMessageToRobot(
-          buildNetworkMessage(MessageTypes.ASK_FOR_MAINTENANCE, null),
-          thisRobot.getId(),
-          thisRobot.getPortNumber()
-        );
 
-    // Timer timer = new Timer();
-    // timer.schedule(new TimerTask() {
-    //     @Override
-    //     public void run() {
-    //       sendAlive();
-    //     }
-    // }, 15 * 1000);
+    retryAskThread = new Thread(new Runnable() {
+      @Override
+      public void run() {
+        try {
+          Thread.sleep(Config.MALFUNCTION_RETRY_ASK_AFTER * 1000);
+          log("retrying ask for maintenance");
+          askForMaintenance();
+        } catch (InterruptedException e) {
+          // e.printStackTrace();
+        }
+      }
+    });
+    retryAskThread.start();
   }
 
-  public void hasFinishedMaintenance() {
-    log("sending maintenance ok to all in queue ("+getNetworkQueue().size()+")");
-    robotOks = new ArrayList<>();
-    List<QueueNode> queue = getNetworkQueue().readAndClear();
+  public synchronized void hasFinishedMaintenance() {
+    log("sending maintenance ok to all in queue "+resource.getQueueToString()+"");
+    resource.clearOk();
+    List<QueueNode> queue = resource.readAndClearQueue();
     for (QueueNode node : queue) {
       RobotBean robot = node.getRobot();
-      log("sending maintenance ok to "+robot.getId());
+      // log("sending maintenance ok to "+robot.getId());
       Robot.getInstance().getCommunication()
         .sendMessageToRobot(
           buildNetworkMessage(MessageTypes.MAINTENANCE_OK, null),
@@ -160,7 +164,7 @@ public class RobotNetwork {
     );
   }
 
-  public NetworkResponse createResponseForRobotMessage(NetworkMessage message) {
+  public synchronized NetworkResponse createResponseForRobotMessage(NetworkMessage message) {
 
     MessageTypes type = MessageTypes.valueOf(message.getMessageType());
     int senderId = message.getSenderId();
@@ -189,50 +193,57 @@ public class RobotNetwork {
   }
 
   private NetworkResponse welcomeNewRobot(int senderId, int senderPort) {
+    if (resource.containsRobot(senderId)) {
+      log("Robot "+senderId+" already in network "+resource.getRobotsToString());
+      return ackResponse();
+    }
     RobotBean newRobot = new RobotBean(senderId, "localhost", senderPort);
-    addRobot(newRobot);
-    log("Robot "+senderId+" welcomed and added to network.");
+    resource.addRobot(newRobot);
+    log("Robot "+senderId+" welcomed and added to network "+resource.getRobotsToString());
     return ackResponse();
   }
 
   private NetworkResponse robotLeftNetwork(int senderId, int senderPort) {
     //! should I remove from queue? remove stub?
-    removeRobotIf(senderId);
-    log("Robot "+senderId+" removed from network.");
+    if (!resource.containsRobot(senderId)) {
+      log("Robot "+senderId+" not in network "+resource.getRobotsToString());
+      return ackResponse();
+    }
+    resource.removeRobot(senderId);
+    log("Robot "+senderId+" removed from network "+resource.getRobotsToString());
+    
+    checkAndRunMaintenance();
+
     return ackResponse();
   }
 
   private NetworkResponse robotAskedForMaintenence(NetworkMessage message) {
 
     int senderId = message.getSenderId();
-    if (senderId == thisRobot.getId()) {
+
+    if (senderId == Robot.getInstance().getId()) {
       log("Robot "+senderId+" asked for maintenance.\n\tI asked myself, responding ok.");
       return builNetworkResponse(MessageTypes.MAINTENANCE_OK, null);
     }
+
     RobotMaintenance.State thisState = Robot.getInstance().getMaintenance().getState();
-    
     if (thisState == RobotMaintenance.State.OUT) {
-
-      log("Robot "+senderId+" asked for maintenance.\n\tI am not asking nor using.");
+      log("Robot "+senderId+" asked for maintenance.\n\tI am nor asking nor using, responding ok.");
       return builNetworkResponse(MessageTypes.MAINTENANCE_OK, null);
-    
     } else if (thisState == RobotMaintenance.State.ASK) {
-
-      long askedTs = Robot.getInstance().getMaintenance().getAskedTimestamp();
-      
-      if (askedTs > message.getTimestamp()) {
-        log("Robot "+senderId+" asked for maintenance.\n\tI asked first, appending to my queue.");
+      long thisAskedTs = Robot.getInstance().getMaintenance().getAskedTimestamp();
+      if (thisAskedTs < message.getTimestamp()) {
         addToQueue(senderId, message.getTimestamp());
+        log("Robot "+senderId+" asked for maintenance.\n\tI asked berfore, appending to my queue "+resource.getQueueToString());
         return ackResponse();
       } else {
-        log("Robot "+senderId+" asked for maintenance.\n\tI asked after.");
+        log("Robot "+senderId+" asked for maintenance.\n\tI asked after, responding ok.");
         return builNetworkResponse(MessageTypes.MAINTENANCE_OK, null);
       }
     } else if (thisState == RobotMaintenance.State.IN) {
-        
-        log("Robot "+senderId+" asked for maintenance.\n\tI am using.");
-        addToQueue(senderId, message.getTimestamp());
-        return ackResponse();
+      addToQueue(senderId, message.getTimestamp());
+      log("Robot "+senderId+" asked for maintenance.\n\tI am using, appending to my queue "+resource.getQueueToString());
+      return ackResponse();
     } else {
       log("Robot "+senderId+" asked for maintenance.\n\tI am in an unknown state.");
     }
@@ -240,79 +251,55 @@ public class RobotNetwork {
   }
 
   private void addToQueue(int senderId, long timestamp) {
-    RobotBean robot = getRobotIf(senderId);
+    if (resource.containsQueue(senderId)) {
+      // log("Robot "+senderId+" already in queue. "+resource.getQueueToString());
+      return;
+    }
+    RobotBean robot = resource.getRobot(senderId);
     if (robot == null) {
       //! must fix this
       log("CRITIC! Robot "+senderId+" not found in list.");
       return;
     }
-    log("Robot "+senderId+" added to maintenance queue.");
-    addQueueNode(new QueueNode(robot, timestamp));;
+    resource.addQueueNode(new QueueNode(robot, timestamp));;
+    // log("Robot "+senderId+" added to queue."+resource.getQueueToString());
   }
 
   private NetworkResponse robotOkedForMaintenance(NetworkMessage message) {
 
-    if (isRobotOk(message.getSenderId())) {
-      log("Robot "+message.getSenderId()+" already oked for maintenance ("+robotOks.size()+" of "+robots.size()+").");
+    if (Robot.getInstance().getMaintenance().getState() != RobotMaintenance.State.ASK) {
+      log("Robot "+message.getSenderId()+" ok, but I am not asking.");
       return ackResponse();
     }
 
-    if (thisRobot.getId() != message.getSenderId()) {
-      RobotBean robot = getRobotIf(message.getSenderId());
-      if (robot == null) {
-        //! must fix this
-        log("CRITIC! Robot "+message.getSenderId()+" not found in list.");
-      }
+    if (resource.containsOk(message.getSenderId())) {
+      log("Robot "+message.getSenderId()+" already ok " + "( " +resource.getOksToString()+ " of "+resource.getRobotsSize()+ " )");
+      checkAndRunMaintenance();
+      return ackResponse();
+    }
 
-      addRobotOk(robot);
-      log("Robot "+message.getSenderId()+" oked for maintenance ("+robotOks.size()+" of "+robots.size()+").");
+    RobotBean robot = resource.getRobot(message.getSenderId());
+    if (robot == null) {
+      //! must fix this
+      log("CRITIC! Robot "+message.getSenderId()+" not found in list.");
     }
-    if (getRobotOksSize() == robots.size()) {
-      // log("All robots oked for maintenance, starting.");
-      Robot.getInstance().getMaintenance().maintenanceGranted();
-    }
+    resource.addOk(robot);
+    log("Robot "+message.getSenderId()+" ok " + "( " +resource.getOksToString()+ " of "+resource.getRobotsSize()+ " )");
+
+    checkAndRunMaintenance();
 
     return ackResponse();
   }
 
-
-  ////////////////////////////////////////////////////////////
-  // SYNC
-  ////////////////////////////////////////////////////////////
-
-  private synchronized List<RobotBean> getRobots() {
-    return this.robots;
-  }
-  private synchronized void addRobot(RobotBean robot) {
-    this.robots.add(robot);
-  }
-  private synchronized void removeRobotIf(int id) {
-    this.robots.removeIf((robot) -> robot.getId() == id);
-  }
-  private synchronized RobotBean getRobotIf(int id) {
-    return this.robots.stream()
-      .filter((robot) -> robot.getId() == id)
-      .findFirst()
-      .orElse(null);
-  }
-  private synchronized List<RobotBean> getRobotOks() {
-    return this.robotOks;
-  }
-  private synchronized boolean isRobotOk(int id) {
-    return this.robotOks.stream()
-      .anyMatch((robot) -> robot.getId() == id);
-  }
-  private synchronized void addRobotOk(RobotBean robot) {
-    this.robotOks.add(robot);
-  }
-  private synchronized int getRobotOksSize() {
-    return this.robotOks.size();
-  }
-  private synchronized NetworkQueue getNetworkQueue() {
-    return this.networkQueue;
-  }
-  private synchronized void addQueueNode(QueueNode node) {
-    this.networkQueue.add(node);
+  private void checkAndRunMaintenance() {
+    if (Robot.getInstance().getMaintenance().getState() != RobotMaintenance.State.ASK) {
+      return;
+    }
+    if (resource.getOksSize() >= resource.getRobotsSize()) {
+      // log("All robots oked for maintenance, starting.");
+      retryAskThread.interrupt();
+      Robot.getInstance().getMaintenance().maintenanceGranted();
+    }
   }
 
   ////////////////////////////////////////////////////////////
@@ -325,8 +312,8 @@ public class RobotNetwork {
     ) {
     return NetworkMessage.newBuilder()
       .setMessageType(messageType.toString())
-      .setSenderId(thisRobot.getId())
-      .setSenderPort(thisRobot.getPortNumber())
+      .setSenderId(Robot.getInstance().getId())
+      .setSenderPort(Robot.getInstance().getPortNumber())
       .setTimestamp(System.currentTimeMillis())
       .setAdditionalPayload(additionalPayload == null ? "" : additionalPayload)
       .build();
@@ -338,8 +325,8 @@ public class RobotNetwork {
     ) {
     return NetworkResponse.newBuilder()
       .setMessageType(messageType.toString())
-      .setSenderId(thisRobot.getId())
-      .setSenderPort(thisRobot.getPortNumber())
+      .setSenderId(Robot.getInstance().getId())
+      .setSenderPort(Robot.getInstance().getPortNumber())
       .setTimestamp(System.currentTimeMillis())
       .setAdditionalPayload(additionalPayload == null ? "" : additionalPayload)
       .build();
@@ -350,13 +337,13 @@ public class RobotNetwork {
   }
 
   private void log(String message) {
-    System.out.println("Network ["+thisRobot.getId()+"]: "+message);
+    System.out.println("Network ["+Robot.getInstance().getId()+"]: "+message);
   }
 
-  public void disconnect() {
+  public synchronized void disconnect() {
     //! send to all robots that I am leaving
     this.leaveNetwork();
-    System.out.println("Network ["+thisRobot.getId()+"]: Destroyed.");
+    System.out.println("Network ["+Robot.getInstance().getId()+"]: Destroyed.");
   }
 
 }

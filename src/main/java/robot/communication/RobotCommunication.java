@@ -191,17 +191,19 @@ public class RobotCommunication {
         public void onError(Throwable t) {
           // if no response remove from network
           System.out.println("gRPC Observer: Error: "+t.getMessage());
-          try {
-            Robot.getInstance().getNetwork().createResponseForRobotMessage(
-              NetworkMessage.newBuilder()
-                .setMessageType("LEAVING")
-                .setSenderId(recipientId)
-                .setSenderPort(recipientPort)
-                .setTimestamp(System.currentTimeMillis())
-                .build()
-            );
-          } catch (Exception e) {
-            System.out.println("gRPC Observer: LEAVING Error: "+e.getMessage());
+          if (t.getMessage().contains("UNAVAILABLE")) {
+            try {
+              Robot.getInstance().getNetwork().createResponseForRobotMessage(
+                NetworkMessage.newBuilder()
+                  .setMessageType("LEAVING")
+                  .setSenderId(recipientId)
+                  .setSenderPort(recipientPort)
+                  .setTimestamp(System.currentTimeMillis())
+                  .build()
+              );
+            } catch (Exception e) {
+              System.out.println("gRPC Observer: LEAVING Error: "+e.getMessage());
+            }
           }
         }
         @Override

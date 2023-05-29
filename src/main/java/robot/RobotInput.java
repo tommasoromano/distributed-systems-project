@@ -78,6 +78,7 @@ public class RobotInput implements Runnable {
         }
       } catch (Exception e) {
         System.out.println("Input Error: "+e.getMessage());
+        // e.printStackTrace();
         break;
       }
     }

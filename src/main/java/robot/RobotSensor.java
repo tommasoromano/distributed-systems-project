@@ -6,6 +6,7 @@ import java.util.TimerTask;
 import simulator.BufferMeasurement;
 import simulator.PM10Simulator;
 import simulator.Simulator;
+import utils.Config;
 import utils.MeasurementRecord;
 
 /**
@@ -69,9 +70,10 @@ public class RobotSensor implements Runnable {
 
     while(true){
       try {
-        Thread.sleep(15*1000);
+        Thread.sleep(Config.POLLUTION_SEND_EVERY*1000);
         sendPollutionLevel();
       } catch (InterruptedException e) {
+        // e.printStackTrace();
         // System.out.println("RobotSensor: interrupted.");
         break;
       }
@@ -98,8 +100,9 @@ public class RobotSensor implements Runnable {
   public void destroy() {
     try {
       this.pm10Simulator.stopMeGently();
-      // this.pm10Thread.interrupt();
+      this.pm10Thread.interrupt();
     } catch (Exception e) {
+      // e.printStackTrace();
       // System.out.println("RobotSensor: error while destroying.");
     }
     // this.scheduler.cancel();

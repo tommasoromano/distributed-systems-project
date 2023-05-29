@@ -1,6 +1,7 @@
 package robot.communication;
 
 import robot.Robot;
+import utils.Config;
 
 import java.util.Timer;
 import java.util.TimerTask;
@@ -29,10 +30,6 @@ public class RobotMaintenance implements Runnable {
 
   private Thread thisThread;
 
-  private long malfunctionLoop = 10;
-  private float changeOfMalfunction = 0.01f;
-  private int malfunctionLength = 10;
-
   public enum State {
     ASK,
     IN,
@@ -60,11 +57,11 @@ public class RobotMaintenance implements Runnable {
     // scheduler.schedule(task, malfunctionLoop*1000, malfunctionLoop*1000);
 
     while (true) {
-      if (Math.random() < changeOfMalfunction) {
+      if (Math.random() < Config.MALFUNCTION_CHANCE) {
         Robot.getInstance().getMaintenance().goToMaintenance();
       }
       try {
-        Thread.sleep(malfunctionLoop*1000);
+        Thread.sleep(Config.MALFUNCTION_CHANCE_LOOP*1000);
       } catch (InterruptedException e) {
         // e.printStackTrace();
         break;
@@ -78,6 +75,7 @@ public class RobotMaintenance implements Runnable {
       return;
     }
     System.out.println("Maintenance: "+ Robot.getInstance().getId()+" needs to go to maintenance");
+    setAskedTimestamp(System.currentTimeMillis());
     setState(State.ASK);
     Robot.getInstance().getNetwork().askForMaintenance();
   }
@@ -88,14 +86,20 @@ public class RobotMaintenance implements Runnable {
     }
     System.out.println("Maintenance: granted");
     setState(State.IN);
-    try {
-      Thread.sleep(malfunctionLength*1000);
-    } catch (InterruptedException e) {
-      e.printStackTrace();
-    }
-    System.out.println("Maintenance: finished");
-    setState(State.OUT);
-    Robot.getInstance().getNetwork().hasFinishedMaintenance();
+    Thread maintenanceThread = new Thread(new Runnable() {
+      @Override
+      public void run() {
+        try {
+          Thread.sleep(Config.MALFUNCTION_LENGTH*1000);
+        } catch (InterruptedException e) {
+          // e.printStackTrace();
+        }
+        System.out.println("Maintenance: finished");
+        setState(State.OUT);
+        Robot.getInstance().getNetwork().hasFinishedMaintenance();
+      }
+    });
+    maintenanceThread.start();
   }
 
   private synchronized void setState(State state) {
@@ -106,8 +110,11 @@ public class RobotMaintenance implements Runnable {
     return this.state;
   }
 
-  public long getAskedTimestamp() {
+  public synchronized long getAskedTimestamp() {
     return this.askedTimestamp;
+  }
+  private synchronized void setAskedTimestamp(long timestamp) {
+    this.askedTimestamp = timestamp;
   }
 
 

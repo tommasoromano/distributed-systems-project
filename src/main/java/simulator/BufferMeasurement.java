@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import robot.Robot;
+import utils.Config;
 import utils.MeasurementRecord;
 
 /**
@@ -28,8 +29,6 @@ import utils.MeasurementRecord;
 public class BufferMeasurement implements Buffer {
 
   private List<Measurement> measurements;
-  private int windowSize = 8;
-  private int overlapFactor = 50;
   private List<Measurement> averages;
   
   private boolean stopPrintMsg = false;
@@ -54,7 +53,7 @@ public class BufferMeasurement implements Buffer {
     if (!this.stopPrintMsg) {
       System.out.println("Buffer: Added measurement: " + toAdd + ", buffer size: " + this.measurements.size());
     }
-    if (this.measurements.size() == this.windowSize) {
+    if (this.measurements.size() == Config.BUFFER_SENSOR_WINDOW_SIZE) {
       // compute average
       double avg = 0.0;
       for (Measurement m : this.measurements) {
@@ -68,11 +67,11 @@ public class BufferMeasurement implements Buffer {
         System.currentTimeMillis())
       );
       // remove first half of the window
-      for (int i = 0; i < windowSize*overlapFactor/100; i++) {
+      for (int i = 0; i < Config.BUFFER_SENSOR_WINDOW_SIZE*Config.BUFFER_SENSOR_OVERLAP_FACTOR/100; i++) {
         this.measurements.remove(0);
       }
       if (!this.stopPrintMsg) {
-        System.out.println("Buffer: reached windowsSize(" + this.windowSize
+        System.out.println("Buffer: reached windowsSize(" + Config.BUFFER_SENSOR_WINDOW_SIZE
             + "), computed average: " + avg + " and keeped last " + this.measurements.size() + " measurements");
       }
       this.stopPrintMsg = true;

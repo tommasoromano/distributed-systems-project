@@ -30,4 +30,19 @@ public class NetworkQueue {
   public synchronized int size() {
     return this.queue.size();
   }
+  public synchronized boolean contains(int id) {
+    for (QueueNode node : this.queue) {
+      if (node.getRobot().getId() == id) {
+        return true;
+      }
+    }
+    return false;
+  }
+  public synchronized String queueNodesToString() {
+    String s = "[ ";
+    for (QueueNode node : this.queue) {
+      s += node.getRobot().getId() + " ";
+    }
+    return s + "]";
+  }
 }
