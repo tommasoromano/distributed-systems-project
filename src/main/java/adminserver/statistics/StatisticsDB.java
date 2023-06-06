@@ -6,7 +6,7 @@ import java.util.List;
 import java.util.Map;
 
 import utils.Config;
-import utils.MeasurementRecord;
+import simulator.MeasurementRecord;
 
 public class StatisticsDB {
 

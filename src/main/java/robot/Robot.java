@@ -1,12 +1,18 @@
 package robot;
 
 import adminserver.REST.beans.InsertRobotBean;
-import robot.communication.RobotCommunication;
-import robot.communication.RobotMaintenance;
-import robot.communication.network.RobotNetwork;
+import robot.network.RobotNetwork;
 import utils.City;
 import utils.Position;
 
+/**
+ * Each Cleaning robot is simulated through a process, which is responsible for:
+ * • periodically sending the air pollution measurements it collected to the
+ * Administrator Server through MQTT
+ * • coordinating with the other robots by using gRPC to distributively
+ * decide which robot is allowed to reach the mechanic of Greenfield for
+ * maintenance issues
+ */
 public class Robot {
   private static Robot instance = null;
 
@@ -40,6 +46,27 @@ public class Robot {
 
   ////////////////////////////////////////////////////////////
   // INITIALIZATION
+  //
+  //   A cleaning robot is initialized by specifying
+  // • ID
+  // • listening port for communications with the other robots
+  // • Administrator Server’s address
+  // Once it is launched, the cleaning robot process must register itself to the
+  // system through the Administrator Server. If its insertion is successful (i.e.,
+  // there are no other robots with the same ID), the cleaning robot receives
+  // from the Administrator Server:
+  // • its starting position in one of the smart city districts
+  // • the list of the other robots already present in Greenfield (i.e., ID,
+  // address, and port number of each robot)
+  // Once the cleaning robot receives this information, it starts acquiring data
+  // from its pollution sensor. Then, if there are other robots in Greenfield, the
+  // cleaning robot presents itself to the other ones by sending them
+  // • its position in the grid
+  // • its district
+  // • its ID
+  // • its port number for communications
+  // Finally, the cleaning robot connects as a publisher to the MQTT topic
+  // of its district.
   ////////////////////////////////////////////////////////////
 
   public void start() {
@@ -47,21 +74,6 @@ public class Robot {
     if (init) { return; }
 
     this.input.start();
-  
-    // Shutdown hook
-    // Runtime.getRuntime().addShutdownHook(new Thread() {
-    //     public void run() {
-    //       System.out.println("Shutdown hook running...");
-    //         if (Robot.instance == null
-    //           || Robot.getInstance().getId() == -1
-    //           || !Robot.getInstance().init) { 
-    //             System.out.println("Robot not initialized or destroied. Nothing to do.");
-    //             return; 
-    //           }
-    //         System.out.println("Shutting down robot "+Robot.getInstance().getId()+"...");
-    //         disconnect();
-    //     }
-    // });
   }
 
   public void init(int id, String ipAddress, int portNumber) {
@@ -77,26 +89,21 @@ public class Robot {
     this.setIpAddress(ipAddress);
     this.setPortNumber(portNumber);
 
+    this.communication.start();
+  }
 
-    // join network
-    try {
-      InsertRobotBean insertRobotBean = this.communication.joinNetwork();
-      if (insertRobotBean == null) {
-        System.out.println("Robot "+this.id+" failed to join the network.");
-        return;
-      }
-      Position pos = new Position(insertRobotBean.getX(), insertRobotBean.getY());
-      this.setDistrictId(City.getCityById(this.cityId)
-          .getDistrictByPosition(pos).getId());
+  public boolean isInit() {
+    return this.init;
+  }
 
-      this.network = new RobotNetwork(pos, insertRobotBean.getRobots());
-      this.network.start();
+  public void onJoinedNetwork(InsertRobotBean insertRobotBean) {
 
-    } catch (Exception e) {
-      System.out.println("Robot "+this.id+" failed to join the network.");
-      this.disconnect();
-      return;
-    }
+    this.position = new Position(insertRobotBean.getX(), insertRobotBean.getY());
+    this.setDistrictId(City.getCityById(this.cityId)
+        .getDistrictByPosition(this.position).getId());
+
+    this.network = new RobotNetwork(this.position, insertRobotBean.getRobots());
+    this.network.start();
 
     // sensor.start();
     // communication.start();
@@ -108,8 +115,13 @@ public class Robot {
     System.out.println("Robot initialized.");
   }
 
-  public boolean isInit() {
-    return this.init;
+  public void onFailedToJoinNetwork() {
+    System.out.println("Robot "+this.id+" failed to join the network.");
+    this.ipAddress = "";
+    this.portNumber = -1;
+    this.init = false;
+    this.position = null;
+    this.districtId = -1;
   }
 
   ////////////////////////////////////////////////////////////
@@ -137,22 +149,20 @@ public class Robot {
   // the Administrator Server.
   ////////////////////////////////////////////////////////////
 
-  /**
-   * disconnects the robot from the network
-   */
   public void disconnect() {
 
-    //! must wait until mechanic finished
     if (getMaintenance().getState() == RobotMaintenance.State.IN) {
       System.out.println("Robot "+this.id+" is in maintenance. Waiting for it to finish...");
-      while (getMaintenance().getState() == RobotMaintenance.State.IN) {
-        try {
-          Thread.sleep(1000);
-        } catch (InterruptedException e) {
-          System.out.println("Robot "+this.id+" was interrupted while waiting for maintenance to finish.");
-          break;
-        }
-      }
+      // while (getMaintenance().getState() == RobotMaintenance.State.IN) {
+      //   try {
+      //     Thread.sleep(1000);
+      //   } catch (InterruptedException e) {
+      //     System.out.println("Robot "+this.id+" was interrupted while waiting for maintenance to finish.");
+      //     break;
+      //   }
+      // }
+      getMaintenance().setDisconnectAtMaintenanceEnd();
+      return;
     }
 
     if (Robot.instance == null
@@ -161,7 +171,7 @@ public class Robot {
     System.out.println("Robot "+this.id+" is disconnecting from the network.");
 
     try {
-      this.communication.disconnect();
+      this.communication.destroy();
       // this.network.disconnect();
     } catch (Exception e) {
       System.out.println("Robot "+this.id+" failed to disconnect from the network."
@@ -225,6 +235,9 @@ public class Robot {
       return;
     }
     this.districtId = districtId;
+  }
+  public Position getPosition() {
+    return this.position;
   }
   public int getId() {
     return this.id;

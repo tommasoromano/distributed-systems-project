@@ -9,7 +9,7 @@ import org.eclipse.paho.client.mqttv3.MqttException;
 import org.eclipse.paho.client.mqttv3.MqttMessage;
 import org.junit.Test;
 
-import utils.MeasurementRecord;
+import simulator.MeasurementRecord;
 import utils.City;
 
 public class StatsTester {

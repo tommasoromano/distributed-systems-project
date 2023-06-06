@@ -1,5 +1,6 @@
-package robot.communication;
+package robot;
 
+import robot.IRobotComponent;
 import robot.Robot;
 import utils.Config;
 
@@ -12,21 +13,18 @@ import java.util.TimerTask;
  * to malfunctions. In this case, the cleaning robot must go to the mechanic
  * of Greenfield (for simplicity, it is not necessary to simulate that the robot
  * actually reaches the mechanic in the smart city grid). The mechanic may
- * be accessed only by a single cleaning robot at a time. It is also possible to
- * explicitly ask a cleaning robot to go to the mechanic through a specific command 
- * (i.e., fix ) on the command line. In both cases, you have to implement
- * one of the distributed algorithms of mutual exclusion introduced in the theory 
- * lessons in order to coordinate the maintenance operations of the robots 5
- * of Greenfield. You have to handle critical issues like the insertion/removal
- * of a robot in the smart city during the execution of the mutual exclusion algorithm.
- * For the sake of simplicity, you can assume that the clocks of the robots
- * are properly synchronized and that the timestamps of their requests will
- * never be the same (like Lamport total order can ensure). Note that, all the
- * communications between the robots must be handled through gRPC.
+ * be accessed only by a single cleaning robot at a time. It is also possible
+ * to explicitly ask a cleaning robot to go to the mechanic through a specific
+ * command (i.e., fix ) on the command line. [...]
  * The maintenance operation is simulated through a Thread.sleep() of
- * 10 seconds.
+ * 10 seconds
+ * 
+ * 
+ * [...] When a robot wants to leave the system in a controlled way, it must
+ * follow the next steps:
+ * • complete any operation at the mechanic [...]
  */
-public class RobotMaintenance implements Runnable {
+public class RobotMaintenance implements Runnable, IRobotComponent {
 
   private Thread thisThread;
 
@@ -45,17 +43,6 @@ public class RobotMaintenance implements Runnable {
 
   @Override
   public void run() {
-    // scheduler = new Timer();
-    // TimerTask task = new TimerTask() {
-    //     @Override
-    //     public void run() {
-    //       if (Math.random() < changeOfMalfunction) {
-    //         Robot.getInstance().getMaintenance().goToMaintenance();
-    //       }
-    //     }
-    // };
-    // scheduler.schedule(task, malfunctionLoop*1000, malfunctionLoop*1000);
-
     while (true) {
       if (Math.random() < Config.MALFUNCTION_CHANCE) {
         Robot.getInstance().getMaintenance().goToMaintenance();
@@ -67,25 +54,24 @@ public class RobotMaintenance implements Runnable {
         break;
       }
     }
-
   }
 
-  public void goToMaintenance() {
-    if (getState() != State.OUT) {
+  public synchronized void goToMaintenance() {
+    if (this.state != State.OUT) {
       return;
     }
     System.out.println("Maintenance: "+ Robot.getInstance().getId()+" needs to go to maintenance");
     setAskedTimestamp(System.currentTimeMillis());
-    setState(State.ASK);
+    this.state = State.ASK;
     Robot.getInstance().getNetwork().askForMaintenance();
   }
 
-  public void maintenanceGranted() {
-    if (getState() == State.IN) {
+  public synchronized void maintenanceGranted() {
+    if (this.state == State.IN) {
       return;
     }
     System.out.println("Maintenance: granted");
-    setState(State.IN);
+    this.state = State.IN;
     Thread maintenanceThread = new Thread(new Runnable() {
       @Override
       public void run() {
@@ -97,9 +83,17 @@ public class RobotMaintenance implements Runnable {
         System.out.println("Maintenance: finished");
         setState(State.OUT);
         Robot.getInstance().getNetwork().hasFinishedMaintenance();
+        if (disconnectAtMaintenanceEnd) {
+          Robot.getInstance().disconnect();
+        }
       }
     });
     maintenanceThread.start();
+  }
+
+  private boolean disconnectAtMaintenanceEnd = false;
+  public void setDisconnectAtMaintenanceEnd() {
+    disconnectAtMaintenanceEnd = true;
   }
 
   private synchronized void setState(State state) {

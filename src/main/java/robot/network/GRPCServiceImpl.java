@@ -1,4 +1,4 @@
-package robot.communication.network;
+package robot.network;
 
 import io.grpc.stub.StreamObserver;
 import protos.network.NetworkMessage;

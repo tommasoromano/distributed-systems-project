@@ -1,4 +1,4 @@
-package robot.communication.network;
+package robot.network;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -21,6 +21,9 @@ public class NetworkQueue {
       }
     }
     this.queue.add(node);
+  }
+  public synchronized void remove(int id) {
+    this.queue.removeIf((node) -> node.getRobot().getId() == id);
   }
   public synchronized List<QueueNode> readAndClear() {
     List<QueueNode> tmp = new ArrayList<>(this.queue);

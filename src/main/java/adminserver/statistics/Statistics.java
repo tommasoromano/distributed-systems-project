@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import utils.City;
-import utils.MeasurementRecord;
+import simulator.MeasurementRecord;
 
 /**
  * The Administrator Server has to collect through MQTT the air pollution 

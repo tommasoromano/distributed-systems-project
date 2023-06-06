@@ -1,10 +1,8 @@
 package adminserver.statistics;
 
 import java.sql.Timestamp;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.eclipse.paho.client.mqttv3.IMqttDeliveryToken;
@@ -16,7 +14,7 @@ import org.eclipse.paho.client.mqttv3.MqttMessage;
 
 import adminserver.AdministratorServer;
 import utils.City;
-import utils.MeasurementRecord;
+import simulator.MeasurementRecord;
 import utils.Config;
 
 public class StatisticSubscriber implements Runnable {

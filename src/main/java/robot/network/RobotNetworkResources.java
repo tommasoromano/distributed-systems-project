@@ -1,4 +1,4 @@
-package robot.communication.network;
+package robot.network;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -67,6 +67,9 @@ public class RobotNetworkResources {
   public synchronized void addOk(RobotBean robot) {
     this.robotOks.add(robot);
   }
+  public synchronized void removeOk(int id) {
+    this.robotOks.removeIf((robot) -> robot.getId() == id);
+  }
   public synchronized int getOksSize() {
     return this.robotOks.size();
   }
@@ -90,6 +93,9 @@ public class RobotNetworkResources {
   }
   public synchronized void addQueueNode(QueueNode node) {
     this.networkQueue.add(node);
+  }
+  public synchronized void removeQueueNode(int id) {
+    this.networkQueue.remove(id);
   }
   public synchronized List<QueueNode> readAndClearQueue() {
     return new ArrayList<>(this.networkQueue.readAndClear());

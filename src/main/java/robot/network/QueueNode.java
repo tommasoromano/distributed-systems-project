@@ -1,4 +1,4 @@
-package robot.communication.network;
+package robot.network;
 
 import adminserver.REST.beans.RobotBean;
 

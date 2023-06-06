@@ -1,41 +1,58 @@
-package robot.communication.network;
+package robot.network;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
 
 import adminserver.REST.beans.RobotBean;
 import protos.network.NetworkMessage;
 import protos.network.NetworkResponse;
+import robot.IRobotComponent;
 import robot.Robot;
-import robot.communication.RobotMaintenance;
+import robot.RobotMaintenance;
 import utils.Config;
 import utils.Position;
 
 /**
- * Every 10 seconds, each cleaning robot has a chance of 10% to be subject
- * to malfunctions. In this case, the cleaning robot must go to the mechanic
- * of Greenfield (for simplicity, it is not necessary to simulate that the robot
- * actually reaches the mechanic in the smart city grid). The mechanic may
- * be accessed only by a single cleaning robot at a time. It is also possible to
- * explicitly ask a cleaning robot to go to the mechanic through a specific command 
- * (i.e., fix ) on the command line. In both cases, you have to implement
- * one of the distributed algorithms of mutual exclusion introduced in the theory 
- * lessons in order to coordinate the maintenance operations of the robots 5
- * of Greenfield. You have to handle critical issues like the insertion/removal
- * of a robot in the smart city during the execution of the mutual exclusion algorithm.
- * For the sake of simplicity, you can assume that the clocks of the robots
- * are properly and that the timestamps of their requests will
- * never be the same (like Lamport total order can ensure). Note that, all the
- * communications between the robots must be handled through gRPC.
- * The maintenance operation is simulated through a Thread.sleep() of
- * 10 seconds.
+ * [...] If its insertion is successful, the cleaning robot receives
+ * from the Administrator Server:
+ * • its starting position in one of the smart city districts
+ * • the list of the other robots already present in Greenfield (i.e., ID,
+ * address, and port number of each robot)
+ * Once the cleaning robot receives this information, [...]. 
+ * Then, if there are other robots in Greenfield, the
+ * cleaning robot presents itself to the other ones by sending them
+ * • its position in the grid
+ * • its district
+ * • its ID
+ * • its port number for communications
  * 
- * @param position
- * @param startRobots
+ * 
+ * [...] The mechanic may be accessed only by a single cleaning robot at a time. 
+ * [...], you have to implement
+ * one of the distributed algorithms of mutual exclusion introduced in
+ * the theory lessons (i.e., Ricart and Agrawala or a ring algorithm) in order
+ * to coordinate the maintenance operations of the robots of Greenfield. You
+ * have to handle critical issues like the insertion/removal of a robot in the
+ * smart city during the execution of the mutual exclusion algorithm.
+ * For the sake of simplicity, you can assume that the clocks of the robots
+ * are properly synchronized and that the timestamps of their requests will
+ * never be the same (like Lamport total order can ensure).
+ * [...]
+ * 
+ * 
+ * Cleaning robots can terminate in a controlled way. [...]. 
+ * At the same time, you must handle also those cases
+ * in which a robot unexpectedly leaves the system (e.g., for a crash simulated
+ * by stopping the robot process).
+ * When a robot wants to leave the system in a controlled way, it must
+ * follow the next steps:
+ * • complete any operation at the mechanic
+ * • notify the other robots of Greenfield
+ * • request the Administrator Server to leave Greenfield
+ * When a robot unexpectedly leaves the system, the other robots must
+ * have a mechanism that allows them to detect this event in order to inform
+ * the Administrator Server.
  */
-public class RobotNetwork {
+public class RobotNetwork implements IRobotComponent {
   private Position position;
   private RobotNetworkResources resource;
   // private Timer robotAskRetrier;
@@ -68,13 +85,18 @@ public class RobotNetwork {
     welcomeAll();
   }
 
+  /**
+   * ...if there are other robots in Greenfield, the
+   * cleaning robot presents itself to the other ones by sending them:
+   * its position in the grid, its district, its ID, its port number for communications
+   */
   private void welcomeAll() {
     // log("welcoming all robots.");
     for (RobotBean robot : resource.getRobotsCopy()) {
       log("sending welcome message to "+robot.getId());
       Robot.getInstance().getCommunication()
         .sendMessageToRobot(
-          buildNetworkMessage(MessageTypes.WELCOME, null),
+          buildNetworkMessage(MessageTypes.WELCOME, createWelcomePayload()),
           robot.getId(),
           robot.getPortNumber()
         );
@@ -100,8 +122,6 @@ public class RobotNetwork {
       return;
     }
 
-    checkAndRunMaintenance();
-
     // log("asking for maintenance to all");
     for (RobotBean robot : resource.getRobotsCopy()) {
       // check if have already sent
@@ -116,6 +136,8 @@ public class RobotNetwork {
           robot.getPortNumber()
         );
     }
+
+    checkAndRunMaintenance();
 
     retryAskThread = new Thread(new Runnable() {
       @Override
@@ -167,10 +189,6 @@ public class RobotNetwork {
   public synchronized NetworkResponse createResponseForRobotMessage(NetworkMessage message) {
 
     MessageTypes type = MessageTypes.valueOf(message.getMessageType());
-    int senderId = message.getSenderId();
-    int senderPort = message.getSenderPort();
-    long ts = message.getTimestamp();
-    String additionalPayload = message.getAdditionalPayload();
 
     // log("received message "+message.getMessageType()+" from "+message.getSenderId()+" at "+message.getSenderPort()+" with timestamp "+message.getTimestamp());
 
@@ -178,9 +196,9 @@ public class RobotNetwork {
       case ACK:
         return ackResponse();
       case WELCOME:
-        return this.welcomeNewRobot(senderId, senderPort);
+        return this.welcomeNewRobot(message);
       case LEAVING:
-        return this.robotLeftNetwork(senderId, senderPort);
+        return this.robotLeftNetwork(message);
       case ASK_FOR_MAINTENANCE:
         return this.robotAskedForMaintenence(message);
       case MAINTENANCE_OK:
@@ -192,7 +210,10 @@ public class RobotNetwork {
     return builNetworkResponse(MessageTypes.ERROR, null);
   }
 
-  private NetworkResponse welcomeNewRobot(int senderId, int senderPort) {
+  private NetworkResponse welcomeNewRobot(NetworkMessage message) {
+    int senderId = message.getSenderId();
+    int senderPort = message.getSenderPort();
+
     if (resource.containsRobot(senderId)) {
       log("Robot "+senderId+" already in network "+resource.getRobotsToString());
       return ackResponse();
@@ -203,13 +224,17 @@ public class RobotNetwork {
     return ackResponse();
   }
 
-  private NetworkResponse robotLeftNetwork(int senderId, int senderPort) {
-    //! should I remove from queue? remove stub?
+  private NetworkResponse robotLeftNetwork(NetworkMessage message) {
+    int senderId = message.getSenderId();
+
+    //TODO: add remove communication stub?
     if (!resource.containsRobot(senderId)) {
       log("Robot "+senderId+" not in network "+resource.getRobotsToString());
       return ackResponse();
     }
     resource.removeRobot(senderId);
+    resource.removeOk(senderId);
+    resource.removeQueueNode(senderId);
     log("Robot "+senderId+" removed from network "+resource.getRobotsToString());
     
     checkAndRunMaintenance();
@@ -257,8 +282,6 @@ public class RobotNetwork {
     }
     RobotBean robot = resource.getRobot(senderId);
     if (robot == null) {
-      //! must fix this
-      log("CRITIC! Robot "+senderId+" not found in list.");
       return;
     }
     resource.addQueueNode(new QueueNode(robot, timestamp));;
@@ -280,8 +303,7 @@ public class RobotNetwork {
 
     RobotBean robot = resource.getRobot(message.getSenderId());
     if (robot == null) {
-      //! must fix this
-      log("CRITIC! Robot "+message.getSenderId()+" not found in list.");
+      return ackResponse();
     }
     resource.addOk(robot);
     log("Robot "+message.getSenderId()+" ok " + "( " +resource.getOksToString()+ " of "+resource.getRobotsSize()+ " )");
@@ -336,14 +358,22 @@ public class RobotNetwork {
     return builNetworkResponse(MessageTypes.ACK, null);
   }
 
+  /**
+   * ...position in the grid, its district, its ID, its port number for communications
+   */
+  private String createWelcomePayload() {
+    return Robot.getInstance().getPosition().getX() + "," +
+      Robot.getInstance().getPosition().getY() + "," +
+      Robot.getInstance().getDistrictId() + "," ;
+  }
+
   private void log(String message) {
     System.out.println("Network ["+Robot.getInstance().getId()+"]: "+message);
   }
 
-  public synchronized void disconnect() {
-    //! send to all robots that I am leaving
+  public synchronized void destroy() {
     this.leaveNetwork();
-    System.out.println("Network ["+Robot.getInstance().getId()+"]: Destroyed.");
+    log("Destroyed.");
   }
 
 }

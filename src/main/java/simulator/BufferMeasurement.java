@@ -5,9 +5,9 @@ import java.util.List;
 
 import robot.Robot;
 import utils.Config;
-import utils.MeasurementRecord;
 
 /**
+ * ...
  * Each simulator is a thread that consists of an infinite loop that 
  * periodically generates (with a pre-defined frequency) the simulated measurements.
  * Such measurements are added to a proper data structure. We only provide

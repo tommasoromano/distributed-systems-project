@@ -5,7 +5,7 @@ import java.io.InputStreamReader;
 
 import utils.City;
 
-public class RobotInput implements Runnable {
+public class RobotInput implements Runnable, IRobotComponent {
 
   private Thread thisThread;
   private boolean running;
@@ -34,12 +34,14 @@ public class RobotInput implements Runnable {
           input = ((int)Math.floor(Math.random() * (9999 - 0 + 1) + 0)) + "";
         }
         int id = Integer.parseInt(input);
-        System.out.println("Enter robot ip addres or \"return\" for default:");
-        input = br.readLine();
-        if (input.equals("")) {
-          input = "localhost";
-        }
-        String ipAddress = input;
+
+        // System.out.println("Enter robot ip addres or \"return\" for default:");
+        // input = br.readLine();
+        // if (input.equals("")) {
+        //   input = "localhost";
+        // }
+        String ipAddress = "localhost";
+
         System.out.println("Enter robot port number or \"return\" for a random one:");
         input = br.readLine();
         if (input.equals("")) {

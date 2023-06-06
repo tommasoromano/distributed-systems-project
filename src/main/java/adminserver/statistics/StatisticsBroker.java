@@ -1,5 +1,15 @@
 package adminserver.statistics;
 
+/**
+ * The MQTT Broker on which Greenfield relies is online at the following
+ * address: tcp://localhost:1883.
+ * The cleaning robots of Greenfield use this broker to periodically communicate 
+ * the air pollution measurements to the Administrator Server. As will
+ * be described in the next section, each robot publishes such measurements to
+ * the MQTT topic dedicated to the district in which the robot operates. The
+ * Administrator Server subscribes to all the topics to receive the air pollution
+ * measurements from each district.
+ */
 public class StatisticsBroker implements Runnable {
   @Override
   public void run() {
