@@ -57,6 +57,7 @@ public class RobotMaintenance implements Runnable, IRobotComponent {
   }
 
   public synchronized void goToMaintenance() {
+    testThreadSleep("goToMaintenance");
     if (this.state != State.OUT) {
       return;
     }
@@ -67,6 +68,7 @@ public class RobotMaintenance implements Runnable, IRobotComponent {
   }
 
   public synchronized void maintenanceGranted() {
+    testThreadSleep("maintenanceGranted");
     if (this.state == State.IN) {
       return;
     }
@@ -97,14 +99,17 @@ public class RobotMaintenance implements Runnable, IRobotComponent {
   }
 
   private synchronized void setState(State state) {
+    testThreadSleep("setState");
     this.state = state;
   }
 
   public synchronized State getState() {
+    testThreadSleep("getState");
     return this.state;
   }
 
   public synchronized long getAskedTimestamp() {
+    testThreadSleep("getAskedTimestamp");
     return this.askedTimestamp;
   }
 
@@ -117,5 +122,18 @@ public class RobotMaintenance implements Runnable, IRobotComponent {
     System.out.println("Maintenance: destroyed");
     thisThread.interrupt();
   }
+
+	private void testThreadSleep(String msg) {
+		if (Config.RESOURCE_THREAD_SLEEP <= 0) {
+			return;
+		}
+		System.out.println("[Thread start sleep] Maintenance: " + msg);
+		try {
+			Thread.sleep(Config.RESOURCE_THREAD_SLEEP*1000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		System.out.println("[Thread end sleep] Maintenance: " + msg);
+	}
 
 }

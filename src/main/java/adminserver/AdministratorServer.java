@@ -205,13 +205,13 @@ public class AdministratorServer {
 		if (Config.RESOURCE_THREAD_SLEEP <= 0) {
 			return;
 		}
-		System.out.println("[test] sleeping... Admin: " + msg);
+		System.out.println("[Thread start sleep] Admin: " + msg);
 		try {
 			Thread.sleep(Config.RESOURCE_THREAD_SLEEP*1000);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
-		System.out.println("[test] Admin: " + msg);
+		System.out.println("[Thread end sleep] Admin: " + msg);
 	}
 
 }

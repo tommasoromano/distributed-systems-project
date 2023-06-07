@@ -90,8 +90,8 @@ public class BufferMeasurement implements Buffer {
     return toReturn;
   }
 
-  public synchronized MeasurementRecord createMeasurementRecord() {
-    testThreadSleep("createMeasurementRecord");
+  public MeasurementRecord createMeasurementRecord() {
+    // testThreadSleep("createMeasurementRecord");
 
     List<Measurement> MeasurementAvgs = this.readAllAndClean();
     List<Double> avgs = new ArrayList<Double>();
@@ -106,16 +106,16 @@ public class BufferMeasurement implements Buffer {
   }
 
 	private void testThreadSleep(String msg) {
-		if (Config.RESOURCE_THREAD_SLEEP <= 0) {
+		if (Config.RESOURCE_THREAD_SLEEP_BUFFER <= 0) {
 			return;
 		}
-		System.out.println("[test] sleeping... Buffer: " + msg);
+		System.out.println("[Thread start sleep] Buffer: " + msg);
 		try {
 			Thread.sleep(Config.RESOURCE_THREAD_SLEEP*1000);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
-		System.out.println("[test] Buffer: " + msg);
+		System.out.println("[Thread end sleep] Buffer: " + msg);
 	}
   
 }

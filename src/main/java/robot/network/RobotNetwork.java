@@ -35,6 +35,8 @@ import utils.Position;
  * smart city during the execution of the mutual exclusion algorithm.
  * For the sake of simplicity, you can assume that the clocks of the robots
  * are properly synchronized and that the timestamps of their requests will
+ * testThreadSleep("null");
+ * 
  * never be the same (like Lamport total order can ensure).
  * [...]
  * 
@@ -80,7 +82,9 @@ public class RobotNetwork implements IRobotComponent {
   // SENDING
   ////////////////////////////////////////////////////////////
 
-  public void start() {
+  public synchronized void start() {
+    testThreadSleep("start");
+
     log("starting network");
     welcomeAll();
   }
@@ -117,6 +121,8 @@ public class RobotNetwork implements IRobotComponent {
   }
 
   public synchronized void askForMaintenance() {
+    testThreadSleep("askForMaintenance");
+
 
     if (Robot.getInstance().getMaintenance().getState() != RobotMaintenance.State.ASK) {
       return;
@@ -155,6 +161,8 @@ public class RobotNetwork implements IRobotComponent {
   }
 
   public synchronized void hasFinishedMaintenance() {
+    testThreadSleep("hasFinishedMaintenance");
+
     log("sending maintenance ok to all in queue "+resource.getQueueToString()+"");
     resource.clearOk();
     List<QueueNode> queue = resource.readAndClearQueue();
@@ -187,6 +195,8 @@ public class RobotNetwork implements IRobotComponent {
   }
 
   public synchronized NetworkResponse createResponseForRobotMessage(NetworkMessage message) {
+    testThreadSleep("createResponseForRobotMessage " + message.getMessageType());
+
 
     MessageTypes type = MessageTypes.valueOf(message.getMessageType());
 
@@ -372,8 +382,23 @@ public class RobotNetwork implements IRobotComponent {
   }
 
   public synchronized void destroy() {
+    testThreadSleep("destroy");
+
     this.leaveNetwork();
     log("Destroyed.");
   }
+
+	private void testThreadSleep(String msg) {
+		if (Config.RESOURCE_THREAD_SLEEP <= 0) {
+			return;
+		}
+		System.out.println("[Thread start sleep] Network: " + msg);
+		try {
+			Thread.sleep(Config.RESOURCE_THREAD_SLEEP*1000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		System.out.println("[Thread end sleep] Network: " + msg);
+	}
 
 }

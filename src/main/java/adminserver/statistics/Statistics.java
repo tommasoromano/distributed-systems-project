@@ -83,15 +83,15 @@ public class Statistics {
 	}
 
 	private void testThreadSleep(String msg) {
-		if (Config.RESOURCE_THREAD_SLEEP <= 0) {
+		if (Config.RESOURCE_THREAD_SLEEP_BUFFER <= 0) {
 			return;
 		}
-		System.out.println("[test] sleeping... Statistics: " + msg);
+		System.out.println("[Thread start sleep] Statistics: " + msg);
 		try {
 			Thread.sleep(Config.RESOURCE_THREAD_SLEEP*1000);
 		} catch (InterruptedException e) {
 			e.printStackTrace();
 		}
-		System.out.println("[test] Statistics: " + msg);
+		System.out.println("[Thread end sleep] Statistics: " + msg);
 	}
 }
