@@ -171,7 +171,7 @@ public class AdministratorServer {
 
 				System.out.println("AdministratorServer: Successfully removed robot with id " + id);
 				printRegisteredRobots();
-				break;
+				return;
 			}
 		}
 
