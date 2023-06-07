@@ -71,7 +71,7 @@ import utils.Config;
  */
 public class RobotCommunication implements IRobotComponent {
 
-  private MqttClient client;
+  private MqttClient mqttClient;
 
   private Thread grpcThread;
   private Map<Integer, NetworkServiceStub> grpcStubsMap = new HashMap<>();
@@ -143,13 +143,13 @@ public class RobotCommunication implements IRobotComponent {
     String broker = "tcp://localhost:1883";
     String clientId = MqttClient.generateClientId();
     try {
-        this.client = new MqttClient(broker, clientId);
+        this.mqttClient = new MqttClient(broker, clientId);
         MqttConnectOptions connOpts = new MqttConnectOptions();
         connOpts.setCleanSession(true); // false = the broker stores all subscriptions for the client and all missed messages for the client that subscribed with a Qos level 1 or 2
 
         // Connect the client
         System.out.println("MQTT: " + clientId + " Connecting Broker " + broker);
-        client.connect(connOpts);
+        mqttClient.connect(connOpts);
         System.out.println("MQTT: " + clientId + " Connected Broker " + broker);
 
     } catch (MqttException me ) {
@@ -180,7 +180,7 @@ public class RobotCommunication implements IRobotComponent {
       if (this.sensorMsgCounter % Config.PRINT_SENSOR_EVERY == 0) {
         System.out.println("MQTT: Publishing message: "+message);
       }
-      client.publish(topic, message);
+      mqttClient.publish(topic, message);
       this.sensorMsgCounter++;
     } catch (MqttException e) {
       System.out.println("MQTT: Error: "+e.getMessage());
@@ -300,8 +300,8 @@ public class RobotCommunication implements IRobotComponent {
   private void disconnectFromMQTT() {
     System.out.println("Communication: closing MQTT...");
     try {
-      client.disconnect();
-      client.close();
+      mqttClient.disconnect();
+      mqttClient.close();
     } catch (MqttException e) {
       // e.printStackTrace();
     }

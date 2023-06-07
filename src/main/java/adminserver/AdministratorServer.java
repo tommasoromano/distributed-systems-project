@@ -10,6 +10,7 @@ import adminserver.statistics.Statistics;
 import utils.City;
 import utils.District;
 import utils.Position;
+import utils.Config;
 
 /**
  * The Administrator Server collects the IDs of the cleaning robots registered
@@ -86,7 +87,9 @@ public class AdministratorServer {
 	 * ID, the IP address, and the port number for communication
 	 * @param robotBean
 	 */
-	public synchronized InsertRobotBean addRobot(RobotBean robotBean) {
+	public synchronized InsertRobotBean addRobot(RobotBean robotBean) throws IllegalArgumentException {
+		testThreadSleep("addRobot " + robotBean.getId());
+
 
 		// check if robot is already registered
 		for (RegisteredRobot registeredRobot : this.registeredRobots) {
@@ -118,11 +121,11 @@ public class AdministratorServer {
 		this.registeredRobots.add(newRobot);
 
 		// update statistics
-		List<Integer> validRobotIds = new ArrayList<Integer>();
-		for (RegisteredRobot registeredRobot : this.registeredRobots) {
-			validRobotIds.add(registeredRobot.getId());
-		}
-		this.statistics.setValidRobotIds(validRobotIds);
+		// List<Integer> validRobotIds = new ArrayList<Integer>();
+		// for (RegisteredRobot registeredRobot : this.registeredRobots) {
+		// 	validRobotIds.add(registeredRobot.getId());
+		// }
+		// this.statistics.setValidRobotIds(validRobotIds);
 
 		// return the list of robots already present in Greenfield
 		List<RobotBean> robotBeans = new ArrayList<RobotBean>();
@@ -139,6 +142,8 @@ public class AdministratorServer {
 	}
 
 	public synchronized List<RobotBean> getRobots() {
+		testThreadSleep("getRobots");
+
 		List<RobotBean> robotBeans = new ArrayList<RobotBean>();
 		for (RegisteredRobot registeredRobot : this.registeredRobots) {
 			robotBeans.add(new RobotBean(registeredRobot.getId(),
@@ -156,24 +161,28 @@ public class AdministratorServer {
 	 * structure.
 	 * @param id
 	 */
-	public synchronized void removeRobotById(int id) {
+	public synchronized void removeRobotById(int id) throws IllegalArgumentException {
+		testThreadSleep("removeRobotById " + id);
+
 		for (RegisteredRobot registeredRobot : this.registeredRobots) {
 			if (registeredRobot.getId() == id) {
 				registeredRobot.getDistrict().removeRobot(id);
 				this.registeredRobots.remove(registeredRobot);
+
+				System.out.println("AdministratorServer: Successfully removed robot with id " + id);
+				printRegisteredRobots();
 				break;
 			}
 		}
 
 		// update statistics
-		List<Integer> validRobotIds = new ArrayList<Integer>();
-		for (RegisteredRobot registeredRobot : this.registeredRobots) {
-			validRobotIds.add(registeredRobot.getId());
-		}
-		this.statistics.setValidRobotIds(validRobotIds);
+		// List<Integer> validRobotIds = new ArrayList<Integer>();
+		// for (RegisteredRobot registeredRobot : this.registeredRobots) {
+		// 	validRobotIds.add(registeredRobot.getId());
+		// }
+		// this.statistics.setValidRobotIds(validRobotIds);
 
-		System.out.println("AdministratorServer: Successfully removed robot with id " + id);
-		printRegisteredRobots();
+		throw new IllegalArgumentException("Robot with id " +id+ " does not exists");
 	}
 
 	public Statistics getStatistics() {
@@ -191,4 +200,18 @@ public class AdministratorServer {
 		}
 		System.out.println("AdministratorServer: Registered robots [ " + res + "]");
 	}
+
+	private void testThreadSleep(String msg) {
+		if (Config.RESOURCE_THREAD_SLEEP <= 0) {
+			return;
+		}
+		System.out.println("[test] sleeping... Admin: " + msg);
+		try {
+			Thread.sleep(Config.RESOURCE_THREAD_SLEEP*1000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		System.out.println("[test] Admin: " + msg);
+	}
+
 }

@@ -61,7 +61,7 @@ public class RobotMaintenance implements Runnable, IRobotComponent {
       return;
     }
     System.out.println("Maintenance: "+ Robot.getInstance().getId()+" needs to go to maintenance");
-    setAskedTimestamp(System.currentTimeMillis());
+    this.askedTimestamp = System.currentTimeMillis();
     this.state = State.ASK;
     Robot.getInstance().getNetwork().askForMaintenance();
   }
@@ -107,10 +107,6 @@ public class RobotMaintenance implements Runnable, IRobotComponent {
   public synchronized long getAskedTimestamp() {
     return this.askedTimestamp;
   }
-  private synchronized void setAskedTimestamp(long timestamp) {
-    this.askedTimestamp = timestamp;
-  }
-
 
   public void start() {
     thisThread = new Thread(this);

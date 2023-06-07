@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import utils.City;
+import utils.Config;
 import simulator.MeasurementRecord;
 
 /**
@@ -46,6 +47,7 @@ public class Statistics {
   }
 
 	public synchronized void addMeasurement(MeasurementRecord measurement) {
+		testThreadSleep("addMeasurement "+ MeasurementRecord.toJson(measurement));
 		// if (!this.validRobotIds.contains(measurement.getRobotId())) {
 		// 	System.out.println("Statistics: received measurement from invalid robotId: " + measurement.getRobotId());
 		// 	return;
@@ -54,6 +56,7 @@ public class Statistics {
 	}
 
 	public synchronized double getAvgLastNByRobotId(int robotId, int n) {
+		testThreadSleep("getAvgLastNByRobotId "+ robotId + " " + n);
 		// if (!this.validRobotIds.contains(robotId)) {
 		// 	System.out.println("Statistics: received get_avg_last_n from invalid robotId: " + robotId);
 		// 	return -1;
@@ -62,13 +65,16 @@ public class Statistics {
 	}
 
 	public synchronized double getAvgBetweenTimestamps(long t1, long t2) {
+		testThreadSleep("getAvgBetweenTimestamps "+ t1 + " " + t2);
 		return this.statisticsDB.getAvgBetweenTimestamps(t1, t2);
 	}
 	public synchronized String toDBRepersentation() {
+		testThreadSleep("toDBRepersentation");
 		return this.statisticsDB.dbToString();
 	}
 
 	public synchronized void setValidRobotIds(List<Integer> validRobotIds) {
+		testThreadSleep("setValidRobotIds");
 
 		// System.out.println("Statistics: setting valid robot ids: " + validRobotIds);
 
@@ -76,4 +82,16 @@ public class Statistics {
 		this.statisticsDB.removeRecordsNotInValidRobotIds(validRobotIds);
 	}
 
+	private void testThreadSleep(String msg) {
+		if (Config.RESOURCE_THREAD_SLEEP <= 0) {
+			return;
+		}
+		System.out.println("[test] sleeping... Statistics: " + msg);
+		try {
+			Thread.sleep(Config.RESOURCE_THREAD_SLEEP*1000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		System.out.println("[test] Statistics: " + msg);
+	}
 }

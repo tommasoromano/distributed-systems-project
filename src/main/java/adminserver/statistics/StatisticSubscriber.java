@@ -76,7 +76,7 @@ public class StatisticSubscriber implements Runnable {
                   sensorCounter.put(id, sensorCounter.get(id) + 1);
 
                 } catch (Exception e) {
-                  System.out.println("MQTT Subscriber: Error parsing JSON: " + e.getMessage());
+                  System.out.println("MQTT Subscriber: Error parsing JSON: " + receivedMessage);
                 }
             }
 

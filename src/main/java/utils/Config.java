@@ -9,4 +9,6 @@ public class Config {
   public static final long POLLUTION_SEND_EVERY = 15;
   public static final int BUFFER_SENSOR_WINDOW_SIZE = 8;
   public static final int BUFFER_SENSOR_OVERLAP_FACTOR = 50;
+
+  public static final int RESOURCE_THREAD_SLEEP = -1;
 }

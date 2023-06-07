@@ -49,6 +49,8 @@ public class BufferMeasurement implements Buffer {
 
   @Override
   public synchronized void addMeasurement(Measurement toAdd) {
+    testThreadSleep("addMeasurement "+toAdd.toString());
+
     this.measurements.add(toAdd);
     if (!this.stopPrintMsg) {
       System.out.println("Buffer: Added measurement: " + toAdd + ", buffer size: " + this.measurements.size());
@@ -80,6 +82,8 @@ public class BufferMeasurement implements Buffer {
 
   @Override
   public synchronized List<Measurement> readAllAndClean() {
+    testThreadSleep("readAllAndClean");
+
     List<Measurement> toReturn = new ArrayList<Measurement>(this.averages);
     this.measurements.clear();
     this.averages.clear();
@@ -87,6 +91,8 @@ public class BufferMeasurement implements Buffer {
   }
 
   public synchronized MeasurementRecord createMeasurementRecord() {
+    testThreadSleep("createMeasurementRecord");
+
     List<Measurement> MeasurementAvgs = this.readAllAndClean();
     List<Double> avgs = new ArrayList<Double>();
     for (Measurement m : MeasurementAvgs) {
@@ -98,5 +104,18 @@ public class BufferMeasurement implements Buffer {
       avgs
     );
   }
+
+	private void testThreadSleep(String msg) {
+		if (Config.RESOURCE_THREAD_SLEEP <= 0) {
+			return;
+		}
+		System.out.println("[test] sleeping... Buffer: " + msg);
+		try {
+			Thread.sleep(Config.RESOURCE_THREAD_SLEEP*1000);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		System.out.println("[test] Buffer: " + msg);
+	}
   
 }

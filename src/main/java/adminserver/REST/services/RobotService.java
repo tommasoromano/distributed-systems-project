@@ -47,6 +47,7 @@ public class RobotService {
         return Response.ok(AdministratorServer.getInstance(cityId).addRobot(robotBean)).build();
 
       } catch (Exception e) {
+        // System.out.println("Error REST insert: "+e.getMessage());
         return Response.status(Response.Status.BAD_REQUEST).build();
       }
 
@@ -69,13 +70,21 @@ public class RobotService {
       }
 
       // check if exists a robot with the same id
-      for (RobotBean robotBean : AdministratorServer.getInstance(cityId).getRobots()) {
-        if (robotBean.getId() == id) {
-          AdministratorServer.getInstance(cityId).removeRobotById(id);
-          return Response.ok("Robot "+id+" removed with success").build();
-        }
+      // for (RobotBean robotBean : AdministratorServer.getInstance(cityId).getRobots()) {
+      //   if (robotBean.getId() == id) {
+      //     AdministratorServer.getInstance(cityId).removeRobotById(id);
+      //     return Response.ok("Robot "+id+" removed with success").build();
+      //   }
+      // }
+
+      try {
+        AdministratorServer.getInstance(cityId).removeRobotById(id);
+        return Response.ok("Robot "+id+" removed with success").build();
+      } catch (Exception e) {
+        // System.out.println("Error REST remove: "+e.getMessage());
+        return Response.status(Response.Status.NOT_FOUND).build();
       }
-      return Response.status(Response.Status.NOT_FOUND).build();
+      // return Response.status(Response.Status.NOT_FOUND).build();
     }
 
 }
